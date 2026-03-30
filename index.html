@@ -96,17 +96,52 @@
   display: flex;
   flex-direction: column;
   gap: .5rem;
-  max-height: 350px;
-  overflow: auto;
+  max-height: 500px;
+  overflow-y: auto;
+}
+.user-activity-section {
+  border: 1px solid rgba(10,179,156,.25);
+  border-radius: 12px;
+  padding: .8rem;
+  margin-bottom: 1rem;
+  background: rgba(10,179,156,.05);
+}
+.user-activity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: .6rem;
+  padding-bottom: .4rem;
+  border-bottom: 1px solid rgba(10,179,156,.2);
+}
+.user-activity-name {
+  font-family: 'Syne', sans-serif;
+  font-size: .9rem;
+  font-weight: 600;
+  color: #9cf0e1;
+}
+.user-activity-count {
+  font-size: .7rem;
+  color: rgba(156,240,225,.7);
+  background: rgba(10,179,156,.15);
+  padding: .2rem .5rem;
+  border-radius: 10px;
+}
+.user-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+  max-height: 200px;
+  overflow-y: auto;
 }
 .act {
   border: 1px solid rgba(255,255,255,.08);
-  border-radius: 10px;
-  padding: .6rem;
+  border-radius: 8px;
+  padding: .5rem;
   background: rgba(255,255,255,.03);
 }
 .act .t { font-size: .8rem; font-weight: 600; }
-.act .m { font-size: .72rem; color: rgba(255,255,255,.58); margin-top: .2rem; }
+.act .m { font-size: .7rem; color: rgba(255,255,255,.58); margin-top: .15rem; }
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -194,7 +229,7 @@ input.admin-input {
 
           <div class="panel">
             <div class="panel-head">
-              <div class="panel-title">Recent Activity</div>
+              <div class="panel-title">User Activities</div>
               <span class="chip" id="event-count-chip">0 events</span>
             </div>
             <div class="panel-body">
@@ -306,28 +341,56 @@ function renderActivity(events = []) {
     el.innerHTML = '<div style="color:rgba(255,255,255,.55)">No activity events yet.</div>';
     return;
   }
+
   const users = state.data?.users || [];
   const usersById = {};
   users.forEach((u) => { if (u?.id) usersById[u.id] = u; });
 
-  el.innerHTML = events.slice(0, 120).map((evt) => `
-    <div class="act">
-      <div class="t">${evt.event_label || evt.event_type || 'Activity'}</div>
-      <div class="m">
-        ${(() => {
-          const u = usersById[evt.user_id] || {};
-          const name = evt.user_name
-            || [u.first_name, u.last_name].filter(Boolean).join(' ')
-            || evt.user_email
-            || u.email
-            || 'Unknown user';
-          const email = evt.user_email || u.email || '';
-          const who = email ? `${name} (${email})` : name;
-          return `user: ${who} | page: ${evt.page || 'n/a'} | ${fmtDate(evt.created_at)}`;
-        })()}
+  // Group events by user
+  const eventsByUser = {};
+  events.forEach((evt) => {
+    const userId = evt.user_id || 'unknown';
+    if (!eventsByUser[userId]) {
+      eventsByUser[userId] = [];
+    }
+    eventsByUser[userId].push(evt);
+  });
+
+  // Sort users by most recent activity
+  const sortedUserIds = Object.keys(eventsByUser).sort((a, b) => {
+    const aLatest = Math.max(...eventsByUser[a].map(e => new Date(e.created_at || 0).getTime()));
+    const bLatest = Math.max(...eventsByUser[b].map(e => new Date(e.created_at || 0).getTime()));
+    return bLatest - aLatest;
+  });
+
+  el.innerHTML = sortedUserIds.map((userId) => {
+    const userEvents = eventsByUser[userId].slice(0, 10); // Limit to 10 events per user
+    const u = usersById[userId] || {};
+    const name = userEvents[0]?.user_name
+      || [u.first_name, u.last_name].filter(Boolean).join(' ')
+      || userEvents[0]?.user_email
+      || u.email
+      || userId;
+
+    return `
+      <div class="user-activity-section">
+        <div class="user-activity-header">
+          <div class="user-activity-name">${name}</div>
+          <div class="user-activity-count">${userEvents.length} activities</div>
+        </div>
+        <div class="user-activity-list">
+          ${userEvents.map((evt) => `
+            <div class="act">
+              <div class="t">${evt.event_label || evt.event_type || 'Activity'}</div>
+              <div class="m">
+                page: ${evt.page || 'n/a'} | ${fmtDate(evt.created_at)}
+              </div>
+            </div>
+          `).join('')}
+        </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 function renderSelectedUser() {
