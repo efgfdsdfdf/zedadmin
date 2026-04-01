@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover" />
 <title>Zed - Admin Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -11,6 +11,9 @@
 :root {
   --admin-accent: #0ab39c;
   --admin-accent-2: #4fc8e0;
+}
+* {
+  box-sizing: border-box;
 }
 .admin-wrap {
   padding: 1.4rem;
@@ -48,7 +51,7 @@
   padding: .8rem;
 }
 .metric .k { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.45); }
-.metric .v { font-family: 'Syne', sans-serif; font-size: 1.25rem; margin-top: .2rem; }
+.metric .v { font-family: 'Syne', sans-serif; font-size: 1.25rem; margin-top: .2rem; word-break: break-word; }
 .grid-2 {
   display: grid;
   grid-template-columns: 1.1fr .9fr;
@@ -59,6 +62,7 @@
   border: 1px solid var(--border);
   border-radius: 14px;
   overflow: hidden;
+  min-width: 0; /* helps flex/grid overflow */
 }
 .panel-head {
   display: flex;
@@ -66,19 +70,29 @@
   align-items: center;
   padding: .8rem 1rem;
   border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: .5rem;
 }
 .panel-title { font-family: 'Syne', sans-serif; font-size: .95rem; }
 .panel-body { padding: .8rem 1rem; }
+/* table wrapper for horizontal scroll on small screens */
+.users-table-wrapper {
+  overflow-x: auto;
+  margin: 0 -0.2rem;
+  padding: 0 0.2rem;
+}
 .users-table {
   width: 100%;
   border-collapse: collapse;
   font-size: .8rem;
+  min-width: 500px; /* ensures readability, scrolls on small screens */
 }
 .users-table th,
 .users-table td {
   text-align: left;
   padding: .55rem .4rem;
   border-bottom: 1px solid rgba(255,255,255,.06);
+  white-space: nowrap;
 }
 .users-table th { color: rgba(255,255,255,.45); font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; }
 .users-table tr { cursor: pointer; transition: background .15s; }
@@ -91,6 +105,7 @@
   border-radius: 999px;
   font-size: .68rem;
   padding: .2rem .45rem;
+  white-space: nowrap;
 }
 .activity-list {
   display: flex;
@@ -113,12 +128,15 @@
   margin-bottom: .6rem;
   padding-bottom: .4rem;
   border-bottom: 1px solid rgba(10,179,156,.2);
+  flex-wrap: wrap;
+  gap: .3rem;
 }
 .user-activity-name {
   font-family: 'Syne', sans-serif;
   font-size: .9rem;
   font-weight: 600;
   color: #9cf0e1;
+  word-break: break-word;
 }
 .user-activity-count {
   font-size: .7rem;
@@ -140,8 +158,8 @@
   padding: .5rem;
   background: rgba(255,255,255,.03);
 }
-.act .t { font-size: .8rem; font-weight: 600; }
-.act .m { font-size: .7rem; color: rgba(255,255,255,.58); margin-top: .15rem; }
+.act .t { font-size: .8rem; font-weight: 600; word-break: break-word; }
+.act .m { font-size: .7rem; color: rgba(255,255,255,.58); margin-top: .15rem; word-break: break-word; }
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -154,7 +172,7 @@
   background: rgba(255,255,255,.03);
 }
 .detail-box .k { font-size: .65rem; color: rgba(255,255,255,.45); text-transform: uppercase; }
-.detail-box .v { margin-top: .15rem; font-size: .87rem; }
+.detail-box .v { margin-top: .15rem; font-size: .87rem; word-break: break-word; }
 .toolbar { display: flex; gap: .45rem; flex-wrap: wrap; }
 input.admin-input {
   background: rgba(255,255,255,.08);
@@ -164,14 +182,37 @@ input.admin-input {
   padding: .45rem .55rem;
   font-size: .8rem;
   min-width: 210px;
+  width: auto;
+  flex: 1 1 auto;
 }
+/* responsive refinements */
 @media (max-width: 1080px) {
-  .metric-grid { grid-template-columns: repeat(3, 1fr); }
+  .metric-grid { grid-template-columns: repeat(4, 1fr); }
   .grid-2 { grid-template-columns: 1fr; }
 }
-@media (max-width: 620px) {
-  .metric-grid { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 760px) {
+  .metric-grid { grid-template-columns: repeat(3, 1fr); }
+  .admin-wrap { padding: 0.8rem; gap: 0.8rem; }
+  .admin-hero { flex-direction: column; align-items: stretch; text-align: center; }
+  .hero-actions { justify-content: center; }
+  .panel-head { flex-direction: column; align-items: flex-start; }
+}
+@media (max-width: 580px) {
+  .metric-grid { grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
+  .metric .v { font-size: 1rem; }
+  .metric .k { font-size: 0.65rem; }
   .detail-grid { grid-template-columns: 1fr; }
+  .toolbar button, .hero-actions button { width: 100%; justify-content: center; }
+  .hero-actions { width: 100%; }
+  input.admin-input { min-width: auto; width: 100%; }
+  .admin-hero h1 { font-size: 1.2rem; }
+  .topbar-title { font-size: 1rem; }
+}
+@media (max-width: 420px) {
+  .metric-grid { grid-template-columns: 1fr; gap: 0.5rem; }
+  .users-table th, .users-table td { padding: 0.4rem 0.3rem; font-size: 0.7rem; white-space: normal; }
+  .users-table { min-width: 100%; }
+  .chip { font-size: 0.6rem; }
 }
 </style>
 </head>
@@ -211,19 +252,21 @@ input.admin-input {
               <div class="panel-title">Users</div>
               <span class="chip" id="user-count-chip">0 users</span>
             </div>
-            <div class="panel-body" style="overflow:auto">
-              <table class="users-table">
-                <thead>
-                  <tr>
-                    <th>User</th>
-                    <th>Last Seen</th>
-                    <th>Events</th>
-                    <th>Chats</th>
-                    <th>Vitals</th>
-                  </tr>
-                </thead>
-                <tbody id="users-body"></tbody>
-              </table>
+            <div class="panel-body">
+              <div class="users-table-wrapper">
+                <table class="users-table">
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>Last Seen</th>
+                      <th>Events</th>
+                      <th>Chats</th>
+                      <th>Vitals</th>
+                    </tr>
+                  </thead>
+                  <tbody id="users-body"></tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -281,7 +324,17 @@ function fmtRel(iso) {
 }
 
 function metricCard(key, value) {
-  return `<div class="metric"><div class="k">${key}</div><div class="v">${value ?? 0}</div></div>`;
+  return `<div class="metric"><div class="k">${escapeHtml(key)}</div><div class="v">${value ?? 0}</div></div>`;
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/[&<>]/g, function(m) {
+    if (m === '&') return '&amp;';
+    if (m === '<') return '&lt;';
+    if (m === '>') return '&gt;';
+    return m;
+  });
 }
 
 function renderMetrics(metrics = {}) {
@@ -315,8 +368,8 @@ function renderUsers(users = []) {
     const lastSeen = u.last_seen || u.last_event_at || u.updated_at || null;
     const stats = u.stats || {};
     return `
-      <tr data-user-id="${u.id}">
-        <td><strong>${name}</strong><div style="color:rgba(255,255,255,.45);font-size:.7rem">${u.email || u.id}</div></td>
+      <tr data-user-id="${escapeHtml(u.id)}">
+        <td><strong>${escapeHtml(name)}</strong><div style="color:rgba(255,255,255,.45);font-size:.7rem">${escapeHtml(u.email || u.id)}</div></td>
         <td>${fmtRel(lastSeen)}</td>
         <td>${stats.events || 0}</td>
         <td>${stats.chat_sessions || 0}</td>
@@ -364,26 +417,25 @@ function renderActivity(events = []) {
   });
 
   el.innerHTML = sortedUserIds.map((userId) => {
-    const userEvents = eventsByUser[userId].slice(0, 10); // Limit to 10 events per user
+    const userEvents = eventsByUser[userId].slice(0, 10);
     const u = usersById[userId] || {};
     const name = userEvents[0]?.user_name
       || [u.first_name, u.last_name].filter(Boolean).join(' ')
       || userEvents[0]?.user_email
       || u.email
       || userId;
-
     return `
       <div class="user-activity-section">
         <div class="user-activity-header">
-          <div class="user-activity-name">${name}</div>
+          <div class="user-activity-name">${escapeHtml(name)}</div>
           <div class="user-activity-count">${userEvents.length} activities</div>
         </div>
         <div class="user-activity-list">
           ${userEvents.map((evt) => `
             <div class="act">
-              <div class="t">${evt.event_label || evt.event_type || 'Activity'}</div>
+              <div class="t">${escapeHtml(evt.event_label || evt.event_type || 'Activity')}</div>
               <div class="m">
-                page: ${evt.page || 'n/a'} | ${fmtDate(evt.created_at)}
+                page: ${escapeHtml(evt.page || 'n/a')} | ${fmtDate(evt.created_at)}
               </div>
             </div>
           `).join('')}
@@ -426,7 +478,7 @@ function renderSelectedUser() {
     ['Medicine Scans', stats.medicine_scans || 0],
     ['Appointments', stats.appointments || 0],
     ['Notifications', stats.notifications || 0]
-  ].map(([k, v]) => `<div class="detail-box"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+  ].map(([k, v]) => `<div class="detail-box"><div class="k">${escapeHtml(k)}</div><div class="v">${escapeHtml(v)}</div></div>`).join('');
 }
 
 async function fetchOverview() {
@@ -442,7 +494,8 @@ async function fetchOverview() {
       const res = await fetch(url, { headers });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        lastError = new Error(body.error || `Admin endpoint failed (${res.status}) @ ${url}`);
+        const message = body.error ? `${body.error} @ ${url}` : `Admin endpoint failed (${res.status}) @ ${url}`;
+        lastError = new Error(message);
         continue;
       }
       return await res.json();
@@ -471,7 +524,8 @@ async function callAdminAction(path, options = {}) {
       const res = await fetch(url, { ...options, headers });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        lastError = new Error(body.error || `Request failed (${res.status})`);
+        const message = body.error ? `${body.error} @ ${url}` : `Request failed (${res.status}) @ ${url}`;
+        lastError = new Error(message);
         continue;
       }
       return body;
@@ -654,7 +708,10 @@ document.getElementById('delete-user-btn').addEventListener('click', async () =>
   }
 });
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
+  const user = await ZedAuth.requireAuth();
+  if (!user) return;
+
   const key = sessionStorage.getItem('zed-admin-key') || '';
   if (key) document.getElementById('admin-key').value = key;
   loadData();
