@@ -604,8 +604,20 @@ async function loadData() {
       errEl.style.display = 'block';
       const adminMsg = String(e?.message || 'Unknown error');
       if (/failed to fetch/i.test(adminMsg)) {
-        errEl.textContent =
-          'Admin API error: Failed to fetch. Start backend with "npm start" on port 3000, then open http://localhost:3000/admin.html';
+        const host = window.location.hostname || '';
+        const isLocalHost = host === 'localhost' || host === '127.0.0.1';
+        const isHosted = !isLocalHost && window.location.protocol !== 'file:';
+        const hasApiBase = (typeof ZED_API_BASE !== 'undefined' && String(ZED_API_BASE).trim().length > 0);
+        if (isHosted && !hasApiBase) {
+          errEl.textContent =
+            'Admin API error: No backend API configured for hosted mode. Set ZED_API_BASE to your deployed backend URL (the server that runs /api/admin/overview).';
+        } else if (isHosted) {
+          errEl.textContent =
+            `Admin API error: Failed to fetch from ${String(ZED_API_BASE)}. Confirm the backend is live and CORS allows ${window.location.origin}.`;
+        } else {
+          errEl.textContent =
+            'Admin API error: Failed to fetch. Start backend with "npm start" on port 3000, then open http://localhost:3000/admin.html';
+        }
       } else {
         errEl.textContent = `Admin API error: ${adminMsg}`;
       }
@@ -646,8 +658,13 @@ function getAdminApiCandidates(path) {
     urls.push(...zedCandidateApiUrls(path));
   }
   urls.push(`${window.location.origin}${path}`);
-  urls.push(`http://localhost:3000${path}`);
-  urls.push(`http://127.0.0.1:3000${path}`);
+  const host = window.location.hostname || '';
+  const isLocalHost = host === 'localhost' || host === '127.0.0.1';
+  const isFileProtocol = window.location.protocol === 'file:';
+  if (isLocalHost || isFileProtocol) {
+    urls.push(`http://localhost:3000${path}`);
+    urls.push(`http://127.0.0.1:3000${path}`);
+  }
   return [...new Set(urls)];
 }
 
