@@ -11,6 +11,12 @@
 const SUPABASE_URL  = 'https://cenplbwpjycxotctvjmz.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNlbnBsYndwanljeG90Y3R2am16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MDE0NDgsImV4cCI6MjA4ODQ3NzQ0OH0.6lDMcolkeHre8VE7R823pMcx3uA6Rvw2C9XTiWtUvD8';
 
+// Fallback: try to get from environment (for server-side rendering)
+if (typeof window === 'undefined' && process?.env) {
+  SUPABASE_URL = process.env.SUPABASE_URL || SUPABASE_URL;
+  SUPABASE_ANON = process.env.SUPABASE_ANON_KEY || SUPABASE_ANON;
+}
+
 // ── 2. SUPABASE CLIENT ──────────────────────────────────────────
 if (typeof supabase === 'undefined') {
   console.error('❌ Supabase library not loaded. Make sure to include the Supabase script before zed-core.js');
@@ -442,8 +448,8 @@ const ZedAppointments = {
     return _supabase
       .from('appointments').select('*').eq('user_id', userId)
       .in('status', ['confirmed', 'pending'])
-      .gte('appointment_at', new Date().toISOString())
-      .order('appointment_at', { ascending: true }).limit(limit);
+      .gte('appointment_date', new Date().toISOString())
+      .order('appointment_date', { ascending: true }).limit(limit);
   },
 
   async save(userId, payload) {
@@ -451,9 +457,10 @@ const ZedAppointments = {
     if (result?.data && !result?.error) {
       ZedActivity.track('appointment_create', 'Created appointment', {
         doctor_name: payload.doctor_name || null,
-        appointment_at: payload.appointment_at || null,
+        appointment_date: payload.appointment_date || payload.appointment_at || null,
         status: payload.status || null
       }, userId);
+
     }
     return result;
   },
@@ -464,6 +471,7 @@ const ZedAppointments = {
     return result;
   }
 };
+
 
 // ── 8. SYMPTOM CHECKS ───────────────────────────────────────────
 const ZedSymptoms = {
@@ -832,6 +840,131 @@ const ZedVitalRanges = {
     if (pct >= 94) return { status:'warn', label:'Low normal',  color:'var(--warn)'  };
     if (pct >= 90) return { status:'warn', label:'Low — rest',  color:'var(--warn)'  };
     return          { status:'high', label:'Critical',     color:'var(--error)' };
+  }
+};
+
+// ── 20. SUBSCRIPTION MANAGEMENT ─────────────────────────────
+const ZedSubscription = {
+  _cache: null,
+  _cacheExpiry: 0,
+
+  async getStatus(force = false) {
+    const now = Date.now();
+    if (!force && this._cache && now < this._cacheExpiry) {
+      return this._cache;
+    }
+
+    try {
+      const response = await fetch('/api/subscription/status');
+      const data = await response.json();
+
+      if (response.ok) {
+        this._cache = data;
+        this._cacheExpiry = now + (5 * 60 * 1000); // Cache for 5 minutes
+        return data;
+      }
+    } catch (error) {
+      console.warn('Subscription status check failed:', error);
+    }
+
+    return { hasActiveSubscription: false, plan: null, status: null };
+  },
+
+  async hasFeature(featureKey) {
+    const status = await this.getStatus();
+
+    if (!status.hasActiveSubscription) {
+      // Check if it's a free feature
+      return ['symptom_checker_basic', 'ai_chat_limited', 'vitals_basic', 'emergency_basic'].includes(featureKey);
+    }
+
+    // Define features by plan
+    const planFeatures = {
+      basic: [
+        'symptom_checker_basic', 'ai_chat_limited', 'vitals_basic', 'emergency_basic'
+      ],
+      premium: [
+        'symptom_checker_unlimited', 'ai_chat_unlimited', 'vitals_advanced',
+        'emergency_priority', 'health_coaching', 'family_basic'
+      ],
+      family: [
+        'symptom_checker_unlimited', 'ai_chat_unlimited', 'vitals_advanced',
+        'emergency_priority', 'health_coaching', 'family_full', 'health_history',
+        'bulk_booking'
+      ]
+    };
+
+    return planFeatures[status.plan]?.includes(featureKey) || false;
+  },
+
+  async checkFeatureAccess(featureKey, showUpgrade = true) {
+    const hasAccess = await this.hasFeature(featureKey);
+
+    if (!hasAccess && showUpgrade) {
+      this.showUpgradePrompt(featureKey);
+    }
+
+    return hasAccess;
+  },
+
+  showUpgradePrompt(featureKey) {
+    const featureNames = {
+      'symptom_checker_unlimited': 'Unlimited Symptom Analysis',
+      'ai_chat_unlimited': 'Unlimited AI Medical Assistant',
+      'vitals_advanced': 'Advanced Vitals Analytics',
+      'emergency_priority': 'Priority Emergency Response',
+      'health_coaching': 'Personalized Health Coaching',
+      'family_full': 'Family Health Management'
+    };
+
+    const featureName = featureNames[featureKey] || 'Premium Feature';
+
+    // Create upgrade modal
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8); z-index: 10000;
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    `;
+
+    modal.innerHTML = `
+      <div style="
+        background: var(--card); border: 2px solid var(--teal);
+        border-radius: 20px; padding: 2rem; max-width: 400px;
+        text-align: center; position: relative;
+      ">
+        <button onclick="this.closest('div').parentElement.remove()"
+          style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer;">×</button>
+
+        <div style="font-size: 3rem; margin-bottom: 1rem;">🔓</div>
+        <h3 style="color: var(--teal); margin-bottom: 1rem;">Unlock ${featureName}</h3>
+        <p style="margin-bottom: 2rem; color: rgba(255,255,255,0.7);">
+          Upgrade to Premium to access this advanced feature and many more health insights.
+        </p>
+
+        <div style="display: flex; gap: 1rem; justify-content: center;">
+          <button onclick="window.location.href='subscription.html'"
+            style="background: var(--teal); color: #000; border: none; padding: 0.8rem 1.5rem; border-radius: 10px; cursor: pointer; font-weight: 600;">
+            View Plans
+          </button>
+          <button onclick="this.closest('div').parentElement.remove()"
+            style="background: transparent; color: var(--teal); border: 2px solid var(--teal); padding: 0.8rem 1.5rem; border-radius: 10px; cursor: pointer;">
+            Maybe Later
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+  },
+
+  async trackUsage(featureKey) {
+    // Track feature usage for analytics
+    const user = await ZedAuth.getUser();
+    if (user?.id) {
+      ZedActivity.track('feature_used', `Used ${featureKey}`, { feature: featureKey }, user.id);
+    }
   }
 };
 
