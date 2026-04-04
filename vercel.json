@@ -6,15 +6,18 @@
       "use": "@vercel/node"
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "/api/index.js"
+      "source": "/(.*)",
+      "destination": "/api/index.js"
     }
   ],
   "functions": {
     "api/index.js": {
-      "maxDuration": 30
+      "maxDuration": 60
+    },
+    "api/admin/overview.js": {
+      "maxDuration": 60
     }
   }
 }
