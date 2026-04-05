@@ -5,10 +5,12 @@ dotenv.config({ path: '.envv', override: false });
 
 import express from 'express';
 import cors from 'cors';
-import fetch from 'node-fetch';
-import anthropicRouter from './api/anthropic.js';
-import telemedicineRouter from './api/telemedicine/routes.js';
-import subscriptionRouter from './api/subscription.routes.js';
+// Use global fetch in Node 18+ for Vercel compatibility
+// import fetch from 'node-fetch';
+
+import anthropicRouter from './backend/anthropic.js';
+import telemedicineRouter from './backend/telemedicine/routes.js';
+import subscriptionRouter from './backend/subscription.routes.js';
 
 // Debug: check if key is loaded
 console.log('🔑 OPENAI_API_KEY loaded:', process.env.OPENAI_API_KEY ? 'YES' : 'NO');
@@ -21,6 +23,12 @@ const PORT = process.env.PORT || 3000;
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://cenplbwpjycxotctvjmz.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const ADMIN_DASHBOARD_KEY = process.env.ADMIN_DASHBOARD_KEY || '';
+
+// Enhanced startup logging for Vercel debugging
+console.log('🌐 SUPABASE_URL:', SUPABASE_URL);
+console.log('🔑 SUPABASE_SERVICE_ROLE_KEY:', SUPABASE_SERVICE_ROLE_KEY ? 'Set (' + SUPABASE_SERVICE_ROLE_KEY.substring(0, 8) + '...)' : 'MISSING');
+console.log('🔑 ADMIN_DASHBOARD_KEY:', ADMIN_DASHBOARD_KEY ? 'Set (' + ADMIN_DASHBOARD_KEY.substring(0, 3) + '...)' : 'MISSING');
+
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -131,6 +139,22 @@ async function readTableSafe(path) {
   }
 }
 
+async function readAppointmentsOverviewSafe(limit = 1000) {
+
+  const datePath = `appointments?select=id,user_id,status,appointment_date,created_at&order=created_at.desc&limit=${limit}`;
+  const atPath = `appointments?select=id,user_id,status,appointment_at,created_at&order=created_at.desc&limit=${limit}`;
+
+  try {
+    return await readTableSafe(datePath);
+  } catch (error) {
+    const msg = String(error?.message || '');
+    if (msg.includes('42703') && msg.includes('appointment_date')) {
+      return await readTableSafe(atPath);
+    }
+    throw error;
+  }
+}
+
 async function listAllAuthUsers(maxPages = 10, perPage = 1000) {
   const users = [];
   for (let page = 1; page <= maxPages; page++) {
@@ -201,19 +225,21 @@ app.get('/api/admin/overview', adminGuard, async (req, res) => {
       medicineScans,
       activityLogs
     ] = await Promise.all([
-      readTableSafe('profiles?select=id,first_name,last_name,age,gender,blood_group,updated_at'),
-      listAllAuthUsers(),
-      readTableSafe('chat_sessions?select=id,user_id,title,created_at,updated_at&order=updated_at.desc&limit=5000'),
-      readTableSafe('chat_messages?select=id,session_id,role,created_at&order=created_at.desc&limit=8000'),
-      readTableSafe('vitals_log?select=id,user_id,recorded_at&order=recorded_at.desc&limit=5000'),
-      readTableSafe('symptom_checks?select=id,user_id,area,severity,created_at&order=created_at.desc&limit=5000'),
-      readTableSafe('medical_reports?select=id,user_id,file_name,analysis_type,analyzed_at&order=analyzed_at.desc&limit=5000'),
-      readTableSafe('health_tips?select=id,user_id,category,generated_at&order=generated_at.desc&limit=5000'),
-      readTableSafe('appointments?select=id,user_id,status,appointment_at,created_at&order=created_at.desc&limit=5000'),
-      readTableSafe('notifications?select=id,user_id,read,created_at&order=created_at.desc&limit=5000'),
-      readTableSafe('medicine_scans?select=id,user_id,drug_name,scanned_at&order=scanned_at.desc&limit=5000'),
-      readTableSafe('zed_activity_logs?select=id,user_id,event_type,event_label,page,metadata,created_at&order=created_at.desc&limit=10000')
+      // Reduced limits for Vercel/Serverless performance
+      readTableSafe('profiles?select=id,first_name,last_name,age,gender,blood_group,updated_at&limit=1000'),
+      listAllAuthUsers(5, 500), // Max 2500 users for overview
+      readTableSafe('chat_sessions?select=id,user_id,title,created_at,updated_at&order=updated_at.desc&limit=1000'),
+      readTableSafe('chat_messages?select=id,session_id,role,created_at&order=created_at.desc&limit=1000'),
+      readTableSafe('vitals_log?select=id,user_id,recorded_at&order=recorded_at.desc&limit=1000'),
+      readTableSafe('symptom_checks?select=id,user_id,area,severity,created_at&order=created_at.desc&limit=1000'),
+      readTableSafe('medical_reports?select=id,user_id,file_name,analysis_type,analyzed_at&order=analyzed_at.desc&limit=1000'),
+      readTableSafe('health_tips?select=id,user_id,category,generated_at&order=generated_at.desc&limit=1000'),
+      readAppointmentsOverviewSafe(1000),
+      readTableSafe('notifications?select=id,user_id,read,created_at&order=created_at.desc&limit=1000'),
+      readTableSafe('medicine_scans?select=id,user_id,drug_name,scanned_at&order=scanned_at.desc&limit=1000'),
+      readTableSafe('zed_activity_logs?select=id,user_id,event_type,event_label,page,metadata,created_at&order=created_at.desc&limit=2000')
     ]);
+
 
     const sessionOwner = {};
     chatSessions.forEach((s) => { if (s?.id) sessionOwner[s.id] = s.user_id; });
@@ -354,10 +380,18 @@ app.get('/api/admin/overview', adminGuard, async (req, res) => {
       recentActivity
     });
   } catch (error) {
-    console.error('Admin overview error:', error);
-    res.status(500).json({ error: error.message || 'Failed to build admin overview' });
+    console.error('❌ Admin overview error:', error);
+    // Be more specific in the error response to help debugging
+    const errorMessage = error.message || 'Failed to build admin overview';
+    res.status(500).json({ 
+      error: errorMessage,
+      details: error.toString(),
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      hint: 'Check Vercel environment variables and Supabase connection. For large datasets, this endpoint may timeout.'
+    });
   }
 });
+
 
 app.get('/api/admin/user/:userId', adminGuard, async (req, res) => {
   try {
@@ -490,6 +524,9 @@ app.delete('/api/admin/users/:userId', adminGuard, async (req, res) => {
 app.use('/api/anthropic', anthropicRouter);
 app.use('/api/telemedicine', telemedicineRouter);
 app.use('/api/subscription', subscriptionRouter);
+
+// Serve static files from public directory
+app.use(express.static('public'));
 
 // Debug: check if Anthropic key is loaded
 console.log('🔑 ANTHROPIC_API_KEY loaded:', process.env.ANTHROPIC_API_KEY ? 'YES' : 'NO');
