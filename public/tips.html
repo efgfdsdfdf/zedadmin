@@ -1,0 +1,106 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Zed — Health Tips</title><link rel="stylesheet" href="zed.css"/>
+<style>
+.tips-wrap{padding:1.2rem;display:flex;flex-direction:column;gap:1.1rem;}
+.cat-row{display:flex;gap:.45rem;flex-wrap:wrap;}
+.cat-pill{padding:.32rem .85rem;border-radius:99px;font-size:.78rem;cursor:pointer;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.6);transition:all .18s;}
+.cat-pill.active{background:rgba(0,180,166,.15);border-color:var(--teal);color:var(--teal-light);font-weight:500;}
+.tips-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+.tip-card{background:var(--card);border:1px solid var(--border);border-radius:15px;padding:1.1rem;cursor:pointer;transition:all .22s;}
+.tip-card:hover{border-color:rgba(0,180,166,.28);transform:translateY(-2px);}
+.tip-card.featured{grid-column:span 2;background:linear-gradient(135deg,rgba(0,180,166,.1),rgba(79,200,224,.05));border-color:rgba(0,180,166,.2);}
+.tip-ico{font-size:1.7rem;margin-bottom:.7rem;}
+.tip-card h3{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;margin-bottom:.4rem;line-height:1.3;}
+.tip-card p{font-size:.78rem;color:rgba(255,255,255,.5);line-height:1.6;}
+.tip-tag{display:inline-block;margin-top:.7rem;font-size:.67rem;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:.06em;}
+.ai-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.65rem;font-weight:600;color:var(--teal-light);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.6rem;opacity:.7;}
+.ai-dot-sm{width:5px;height:5px;background:var(--teal);border-radius:50%;animation:dot-blink 1.4s infinite;}
+.skel{background:linear-gradient(90deg,rgba(255,255,255,.05) 0%,rgba(255,255,255,.1) 50%,rgba(255,255,255,.05) 100%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px;}
+@keyframes shimmer{0%{background-position:200% 0}to{background-position:-200% 0}}
+@media(max-width:540px){.tips-grid{grid-template-columns:1fr;}.tip-card.featured{grid-column:span 1;}}
+</style></head><body>
+<div id="loader"><div class="loader-logo">Zed</div><div class="loader-bar-wrap"><div class="loader-bar"></div></div></div>
+<div id="nav-overlay"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><a href="index.html" class="logo">Zed</a><span class="logo-badge">Pro</span></div>
+    <div class="user-block"><div class="user-av">👤</div><div><div class="user-name" id="sb-name">…</div><div class="user-sub">✦ Premium</div></div></div>
+    <div style="flex:1;overflow-y:auto">
+      <div class="nav-section"><div class="nav-label">Main</div>
+        <a href="dashboard.html" class="nav-item"><span class="nav-icon">📊</span>Dashboard</a>
+        <a href="chat.html"      class="nav-item"><span class="nav-icon">🤖</span>AI Chat</a>
+        <a href="symptoms.html"  class="nav-item"><span class="nav-icon">🔬</span>Symptom Checker</a>
+        <a href="report.html"    class="nav-item"><span class="nav-icon">📋</span>Report Analyzer</a>
+                <a href="medicine-scanner.html"   class="nav-item"><span class="nav-icon">💊</span>Medicine Scanner</a>
+      </div>
+      <div class="nav-section"><div class="nav-label">Health</div>
+        <a href="tips.html"      class="nav-item active"><span class="nav-icon">💡</span>Health Tips</a>
+        <a href="hospitals.html" class="nav-item"><span class="nav-icon">🏥</span>Hospitals</a>
+        <a href="profile.html"   class="nav-item"><span class="nav-icon">👤</span>My Profile</a>
+      </div>
+    </div>
+    <div class="sidebar-footer"><button class="emergency-btn" onclick="location.href='emergency.html'">🚨 Emergency</button></div>
+  </aside>
+  <div class="main">
+    <div class="topbar">
+      <div><div class="topbar-title">Health Tips</div><div class="topbar-sub">AI-personalized for you</div></div>
+      <div class="topbar-right">
+        <button class="hamburger" onclick="zedMobileNav()"><span class="hamburger-mid"></span></button>
+        <button class="btn btn-primary" onclick="loadTips(currentCat)" style="font-size:.8rem;padding:.48rem .9rem;">↻ Refresh</button>
+      </div>
+    </div>
+    <div class="scroll-area">
+      <div class="tips-wrap anim-1">
+        <div class="cat-row">
+          <button class="cat-pill active" onclick="loadTips('all',this)">✨ All</button>
+          <button class="cat-pill" onclick="loadTips('nutrition',this)">🥗 Nutrition</button>
+          <button class="cat-pill" onclick="loadTips('exercise',this)">🏃 Exercise</button>
+          <button class="cat-pill" onclick="loadTips('mental health',this)">🧘 Mental</button>
+          <button class="cat-pill" onclick="loadTips('sleep',this)">😴 Sleep</button>
+          <button class="cat-pill" onclick="loadTips('prevention',this)">🛡️ Prevention</button>
+        </div>
+        <div id="tips-container"><div class="tips-grid">
+          <div class="tip-card featured"><div class="skel" style="height:14px;width:35%;margin-bottom:.8rem"></div><div class="skel" style="height:12px;width:85%;margin-bottom:.4rem"></div><div class="skel" style="height:12px;width:70%"></div></div>
+          <div class="tip-card"><div class="skel" style="height:26px;width:26px;border-radius:50%;margin-bottom:.7rem"></div><div class="skel" style="height:13px;width:75%;margin-bottom:.4rem"></div><div class="skel" style="height:11px;width:90%;margin-bottom:.3rem"></div><div class="skel" style="height:11px;width:65%"></div></div>
+          <div class="tip-card"><div class="skel" style="height:26px;width:26px;border-radius:50%;margin-bottom:.7rem"></div><div class="skel" style="height:13px;width:75%;margin-bottom:.4rem"></div><div class="skel" style="height:11px;width:90%;margin-bottom:.3rem"></div><div class="skel" style="height:11px;width:65%"></div></div>
+        </div></div>
+      </div>
+      <div class="page-footer">Developed by ACE. Zed does not replace professional medical advice. Always consult a qualified healthcare provider.</div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="local-auth.js"></script>
+<script src="zed-core.js"></script>
+<script>
+zedHideLoader();
+let currentUser=null,userProfile=null,currentCat='all';
+async function init(){
+  currentUser=await ZedAuth.requireAuth();if(!currentUser)return;
+  document.getElementById('sb-name').textContent=currentUser.user_metadata?.first_name||currentUser.email;
+  const{data:p}=await ZedProfile.get(currentUser.id);userProfile=p;
+  loadTips('all');
+}
+async function loadTips(cat,el){
+  currentCat=cat;
+  if(el){document.querySelectorAll('.cat-pill').forEach(p=>p.classList.remove('active'));el.classList.add('active');}
+  document.getElementById('tips-container').innerHTML='<div style="padding:1.5rem;text-align:center;color:rgba(255,255,255,.3);font-size:.85rem">Generating tips for you…</div>';
+  const p=userProfile;
+  const catLine=cat==='all'?'covering nutrition, exercise, mental health, sleep, and prevention':'focused on '+cat;
+  const profileLine=p?`Age ${p.age||'?'}, ${p.gender||'?'}, Blood ${p.blood_group||'?'}. Conditions: ${p.conditions||'None'}. Meds: ${p.medications||'None'}. Allergies: ${p.allergies||'None'}. Family: ${p.family_history||'None'}. Smoking: ${p.smoking||'?'}, Alcohol: ${p.alcohol||'?'}, Exercise: ${p.exercise||'?'}.`:'No profile data.';
+  const prompt=`You are Zed AI. Generate 5 personalized health tips ${catLine}.\n\nPATIENT: ${profileLine}\n\nReturn ONLY a valid JSON array, no markdown:\n[{"icon":"emoji","category":"word","title":"Short title","tip":"2 sentences referencing the patient profile.","priority":"high|medium|low"}]\n\nMake tips genuinely tailored. priority=high for risk factors in their profile.`;
+  try{
+    let text = await ZedAI.chat([{role:'user',content:prompt}],{max_tokens:1000});
+    text = text.replace(/```json|```/g,'').trim();
+    const tips=JSON.parse(text);
+    let html='<div class="tips-grid">';
+    tips.forEach((t,i)=>{
+      const feat=t.priority==='high'&&i===0;
+      html+=`<div class="tip-card${feat?' featured':''}"><div class="ai-badge"><span class="ai-dot-sm"></span>AI tip</div><div class="tip-ico">${t.icon||'💡'}</div><h3>${t.title}</h3><p>${t.tip}</p><span class="tip-tag">→ ${t.category}</span></div>`;
+    });
+    html+='</div>';
+    document.getElementById('tips-container').innerHTML=html;
+    if(currentUser) await ZedTips.save(currentUser.id, cat, tips);
+  }catch(e){document.getElementById('tips-container').innerHTML='<div class="card" style="text-align:center;padding:1.5rem;color:rgba(255,255,255,.4)">'+(e.message||'Failed to load.')+' <button onclick="loadTips(currentCat)" style="color:var(--teal-light);background:none;border:none;cursor:pointer">Retry</button></div>';}
+}
+init();
+</script></body></html>

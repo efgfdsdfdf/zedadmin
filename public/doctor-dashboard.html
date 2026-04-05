@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Zed - Doctor Dashboard</title>
+<link rel="stylesheet" href="zed.css" />
+<style>
+.page { padding:1rem; display:flex; flex-direction:column; gap:.8rem; }
+.stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:.6rem; }
+.stat { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:.8rem; }
+.k { font-size:.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+.v { font-family:'Syne',sans-serif; font-size:1.2rem; margin-top:.2rem; }
+.list { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:.7rem; }
+.bk { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:.8rem; display:flex; flex-direction:column; gap:.35rem; }
+.name { font-family:'Syne',sans-serif; font-size:1rem; }
+.meta { color:var(--muted); font-size:.83rem; }
+.actions { margin-top:.45rem; display:flex; gap:.45rem; flex-wrap:wrap; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="main">
+    <div class="topbar">
+      <div><div class="topbar-title">Doctor Dashboard</div><div class="topbar-sub">Patients who booked you</div></div>
+      <div class="topbar-right">
+        <a href="bookings.html" class="btn btn-ghost btn-sm">My Bookings</a>
+        <a href="dashboard.html" class="btn btn-primary btn-sm">Main Dashboard</a>
+      </div>
+    </div>
+    <div class="scroll-area">
+      <div class="page">
+        <div id="doctor-head" class="meta">Loading doctor profile...</div>
+        <div class="stats" id="stats"></div>
+        <div class="list" id="bookings-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="local-auth.js"></script>
+<script src="zed-core.js"></script>
+<script>
+async function api(path, options = {}, needsAuth = true) {
+  const apiBase = (typeof ZED_API_BASE !== 'undefined' && ZED_API_BASE)
+    ? ZED_API_BASE
+    : ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== '3000'
+      ? 'http://localhost:3000'
+      : '');
+  const url = path.startsWith('/api/') ? `${apiBase}${path}` : path;
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  if (needsAuth) {
+    const { data } = await _supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) throw new Error('No active session');
+    headers.Authorization = `Bearer ${token}`;
+  }
+  const res = await fetch(url, { ...options, headers });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`);
+  return body;
+}
+
+function statCard(k, v) {
+  return `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+}
+
+function bookingCard(b) {
+  return `
+    <div class="bk">
+      <div class="name">${b.patient?.full_name || b.patient_id}</div>
+      <div class="meta">Status: ${b.status}</div>
+      <div class="meta">Time: ${new Date(b.scheduled_time).toLocaleString()}</div>
+      <div class="meta">Patient: ${b.patient?.age || '-'} yrs ${b.patient?.gender || ''}</div>
+      <div class="meta">Earnings: ₦${Number(b.doctor_earnings || 0).toLocaleString()}</div>
+      <div class="actions">
+        ${(b.status === 'active' || b.status === 'completed') ? `<a class="btn btn-ghost btn-sm" href="consultation.html?booking_id=${b.id}">Open Consultation</a>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+async function init() {
+  const me = await ZedAuth.requireAuth();
+  if (!me) return;
+
+  try {
+    const data = await api('/api/telemedicine/doctors/me/dashboard');
+    const d = data.doctor;
+    const s = data.stats || {};
+    document.getElementById('doctor-head').innerHTML =
+      `<strong>${d.full_name}</strong> · ${d.specialty} · Rating: ${s.rating ?? 'N/A'} (${s.rating_count || 0}) · Score: ${s.score_points || 0}`;
+
+    document.getElementById('stats').innerHTML = [
+      statCard('Patients', s.total_patients || 0),
+      statCard('Total Bookings', s.total_bookings || 0),
+      statCard('Active', s.active_bookings || 0),
+      statCard('Completed', s.completed_bookings || 0),
+      statCard('Total Earnings', `₦${Number(s.total_earnings || 0).toLocaleString()}`),
+      statCard('Rank Score', s.score_points || 0)
+    ].join('');
+
+    const bookings = data.bookings || [];
+    document.getElementById('bookings-list').innerHTML = bookings.length
+      ? bookings.map(bookingCard).join('')
+      : '<div class="meta">No patients have booked you yet.</div>';
+  } catch (e) {
+    document.getElementById('doctor-head').textContent = e.message;
+  }
+}
+
+init();
+</script>
+</body>
+</html>

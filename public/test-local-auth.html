@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Local Auth Test</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 20px; background: #f0f0f0; }
+  .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+  .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+  .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+  .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+  .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+  button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+  button:hover { background: #0056b3; }
+  input { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>Local Authentication Test</h2>
+  <div id="status" class="info">Testing local authentication...</div>
+  
+  <div style="margin-top: 20px;">
+    <h3>Test Actions:</h3>
+    <button onclick="testLocalAuth()">Test Local Auth</button>
+    <button onclick="testLocalSignup()">Sign Up</button>
+    <button onclick="testLocalLogin()">Login</button>
+    <button onclick="testLocalLogout()">Logout</button>
+  </div>
+  
+  <div style="margin-top: 20px;">
+    <h3>Manual Test:</h3>
+    <input type="email" id="testEmail" placeholder="Enter test email">
+    <input type="password" id="testPassword" placeholder="Enter test password">
+    <button onclick="manualSignup()">Sign Up</button>
+    <button onclick="manualLogin()">Login</button>
+  </div>
+  
+  <div id="results" style="margin-top: 20px; font-family: monospace; background: #f8f9fa; padding: 10px; border-radius: 4px;"></div>
+</div>
+
+<script src="local-auth.js"></script>
+<script>
+function setStatus(message, type = 'info') {
+  const status = document.getElementById('status');
+  status.textContent = message;
+  status.className = type;
+}
+
+function logResult(message) {
+  const results = document.getElementById('results');
+  results.innerHTML += new Date().toLocaleTimeString() + ': ' + message + '<br>';
+}
+
+async function testLocalAuth() {
+  setStatus('Testing local authentication...', 'info');
+  logResult('Testing local authentication...');
+  
+  try {
+    const user = await window.LocalAuth.getUser();
+    
+    if (user) {
+      setStatus('✅ Local auth working! User: ' + user.email, 'success');
+      logResult('✅ Local auth working! User: ' + user.email);
+    } else {
+      setStatus('ℹ️ No user currently authenticated', 'info');
+      logResult('ℹ️ No user currently authenticated');
+    }
+  } catch (err) {
+    setStatus('❌ Local auth error: ' + err.message, 'error');
+    logResult('❌ Local auth error: ' + err.message);
+  }
+}
+
+async function testLocalSignup() {
+  setStatus('Testing local signup...', 'info');
+  logResult('Testing local signup...');
+  
+  try {
+    const email = 'test@example.com';
+    const password = 'test123';
+    
+    const result = await window.LocalAuth.signUp(email, password, {
+      first_name: 'Test',
+      last_name: 'User'
+    });
+    
+    if (result.error) {
+      setStatus('❌ Local signup failed: ' + result.error.message, 'error');
+      logResult('❌ Local signup failed: ' + result.error.message);
+    } else {
+      setStatus('✅ Local signup successful!', 'success');
+      logResult('✅ Local signup successful! User: ' + result.data.user.email);
+    }
+  } catch (err) {
+    setStatus('❌ Local signup error: ' + err.message, 'error');
+    logResult('❌ Local signup error: ' + err.message);
+  }
+}
+
+async function testLocalLogin() {
+  setStatus('Testing local login...', 'info');
+  logResult('Testing local login...');
+  
+  try {
+    const email = 'test@example.com';
+    const password = 'test123';
+    
+    const result = await window.LocalAuth.signIn(email, password);
+    
+    if (result.error) {
+      setStatus('❌ Local login failed: ' + result.error.message, 'error');
+      logResult('❌ Local login failed: ' + result.error.message);
+    } else {
+      setStatus('✅ Local login successful!', 'success');
+      logResult('✅ Local login successful! User: ' + result.data.user.email);
+    }
+  } catch (err) {
+    setStatus('❌ Local login error: ' + err.message, 'error');
+    logResult('❌ Local login error: ' + err.message);
+  }
+}
+
+async function testLocalLogout() {
+  setStatus('Testing local logout...', 'info');
+  logResult('Testing local logout...');
+  
+  try {
+    await window.LocalAuth.signOut();
+    setStatus('✅ Local logout successful!', 'success');
+    logResult('✅ Local logout successful!');
+  } catch (err) {
+    setStatus('❌ Local logout error: ' + err.message, 'error');
+    logResult('❌ Local logout error: ' + err.message);
+  }
+}
+
+async function manualSignup() {
+  const email = document.getElementById('testEmail').value;
+  const password = document.getElementById('testPassword').value;
+  
+  if (!email || !password) {
+    setStatus('❌ Please enter email and password', 'error');
+    return;
+  }
+  
+  setStatus('Creating test account...', 'info');
+  logResult('Creating test account...');
+  
+  try {
+    const result = await window.LocalAuth.signUp(email, password, {
+      first_name: 'Manual',
+      last_name: 'Test'
+    });
+    
+    if (result.error) {
+      setStatus('❌ Manual signup failed: ' + result.error.message, 'error');
+      logResult('❌ Manual signup failed: ' + result.error.message);
+    } else {
+      setStatus('✅ Manual signup successful!', 'success');
+      logResult('✅ Manual signup successful! User: ' + result.data.user.email);
+    }
+  } catch (err) {
+    setStatus('❌ Manual signup error: ' + err.message, 'error');
+    logResult('❌ Manual signup error: ' + err.message);
+  }
+}
+
+async function manualLogin() {
+  const email = document.getElementById('testEmail').value;
+  const password = document.getElementById('testPassword').value;
+  
+  if (!email || !password) {
+    setStatus('❌ Please enter email and password', 'error');
+    return;
+  }
+  
+  setStatus('Logging in...', 'info');
+  logResult('Logging in...');
+  
+  try {
+    const result = await window.LocalAuth.signIn(email, password);
+    
+    if (result.error) {
+      setStatus('❌ Manual login failed: ' + result.error.message, 'error');
+      logResult('❌ Manual login failed: ' + result.error.message);
+    } else {
+      setStatus('✅ Manual login successful!', 'success');
+      logResult('✅ Manual login successful! User: ' + result.data.user.email);
+    }
+  } catch (err) {
+    setStatus('❌ Manual login error: ' + err.message, 'error');
+    logResult('❌ Manual login error: ' + err.message);
+  }
+}
+
+// Initialize
+window.addEventListener('load', () => {
+  logResult('Local auth test page loaded');
+  testLocalAuth();
+});
+</script>
+</body>
+</html>

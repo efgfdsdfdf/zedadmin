@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Zed — Subscription Success</title>
+<link rel="stylesheet" href="zed.css"/>
+<style>
+.success-wrap { padding:4rem 2rem; max-width:600px; margin:0 auto; text-align:center; }
+.success-icon { font-size:5rem; margin-bottom:2rem; }
+.success-title { font-family:'Syne',sans-serif; font-size:2.5rem; font-weight:800; margin-bottom:1rem; color:var(--teal); }
+.success-message { font-size:1.2rem; color:rgba(255,255,255,.8); margin-bottom:2rem; line-height:1.6; }
+.success-details { background:var(--card); border:2px solid var(--teal); border-radius:15px; padding:2rem; margin-bottom:2rem; }
+.success-details h3 { color:var(--teal-light); margin-bottom:1rem; }
+.success-details p { color:rgba(255,255,255,.7); margin-bottom:.5rem; }
+.success-actions { display:flex; gap:1rem; justify-content:center; flex-wrap:wrap; }
+.btn-primary, .btn-secondary {
+  padding:1rem 2rem; border-radius:10px; font-weight:600; cursor:pointer; transition:all .2s;
+  text-decoration:none; display:inline-block;
+}
+.btn-primary { background:var(--teal); color:#000; border:2px solid var(--teal); }
+.btn-primary:hover { background:#000; color:var(--teal); }
+.btn-secondary { background:transparent; color:var(--teal); border:2px solid var(--teal); }
+.btn-secondary:hover { background:var(--teal); color:#000; }
+
+@media(max-width:768px) {
+  .success-actions { flex-direction:column; align-items:center; }
+  .btn-primary, .btn-secondary { width:200px; text-align:center; }
+}
+</style>
+</head>
+<body>
+<div id="loader"><div class="loader-logo">Zed</div><div class="loader-bar-wrap"><div class="loader-bar"></div></div></div>
+
+<div class="success-wrap">
+  <div class="success-icon">🎉</div>
+  <h1 class="success-title">Welcome to Premium!</h1>
+  <p class="success-message">Your subscription has been activated successfully. You now have access to all premium health features.</p>
+
+  <div class="success-details">
+    <h3>Your Subscription Details</h3>
+    <p><strong>Plan:</strong> <span id="plan-name">Loading...</span></p>
+    <p><strong>Status:</strong> <span style="color:var(--teal);">Active</span></p>
+    <p><strong>Next billing date:</strong> <span id="next-billing">Loading...</span></p>
+  </div>
+
+  <div class="success-actions">
+    <a href="dashboard.html" class="btn-primary">Go to Dashboard</a>
+    <a href="subscription.html" class="btn-secondary">Manage Subscription</a>
+  </div>
+</div>
+
+<script src="zed-core.js"></script>
+<script>
+async function loadSubscriptionDetails() {
+  try {
+    // Get reference from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const reference = urlParams.get('reference');
+
+    if (reference) {
+      // Verify the payment
+      const response = await fetch(`/api/subscription/verify/${reference}`);
+      const data = await response.json();
+
+      if (data.success) {
+        document.getElementById('plan-name').textContent = formatPlanName(data.subscription.plan);
+        document.getElementById('next-billing').textContent = formatDate(data.subscription.period_end);
+      }
+    } else {
+      // Load current subscription status
+      const response = await fetch('/api/subscription/status');
+      const data = await response.json();
+
+      if (data.hasActiveSubscription) {
+        document.getElementById('plan-name').textContent = formatPlanName(data.plan);
+        document.getElementById('next-billing').textContent = formatDate(data.current_period_end);
+      }
+    }
+
+  } catch (error) {
+    console.error('Failed to load subscription details:', error);
+  }
+}
+
+function formatPlanName(planId) {
+  const names = {
+    basic: 'Basic Health Plan',
+    premium: 'Premium Health Plan',
+    family: 'Family Health Hub'
+  };
+  return names[planId] || planId;
+}
+
+function formatDate(dateString) {
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+}
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', async () => {
+  await ZedAuth.requireAuth();
+  await loadSubscriptionDetails();
+});
+</script>
+</body>
+</html>

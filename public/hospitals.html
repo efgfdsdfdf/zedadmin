@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Zed — Hospital Finder (Leaflet + OSM + Routing)</title>
+
+<!-- Leaflet + Routing Machine CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+<!-- keep original zed.css but we may override a bit -->
+<link rel="stylesheet" href="zed.css"/>
+<style>
+/* additional leaflet tile / map style */
+.hosp-wrap{padding:1.2rem;display:flex;flex-direction:column;gap:1.1rem;}
+.search-bar{display:flex;gap:.6rem;align-items:center;}
+.search-input-wrap{flex:1;position:relative;}
+.search-input-wrap input{width:100%;padding:.72rem 1rem .72rem 2.5rem;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;color:#fff;font-size:.9rem;outline:none;transition:border-color .2s;}
+.search-input-wrap input:focus{border-color:var(--teal);}
+.search-icon{position:absolute;left:.85rem;top:50%;transform:translateY(-50%);opacity:.4;pointer-events:none;}
+.filter-row{display:flex;gap:.45rem;flex-wrap:wrap;}
+.filter-pill{padding:.3rem .75rem;border-radius:99px;font-size:.76rem;cursor:pointer;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.6);transition:all .18s;}
+.filter-pill.active{background:rgba(0,180,166,.15);border-color:var(--teal);color:var(--teal-light);font-weight:500;}
+
+/* Map container */
+#map{width:100%;height:240px;border-radius:14px;border:1px solid rgba(255,255,255,.08);z-index:1;}
+.map-state{width:100%;height:240px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.65rem;color:rgba(255,255,255,.45);font-size:.84rem;text-align:center;padding:1.2rem;}
+.map-state .ico{font-size:2rem;}
+.map-state .err-box{color:#f87171;font-size:.78rem;background:rgba(255,92,122,.08);border:1px solid rgba(255,92,122,.2);border-radius:8px;padding:.55rem 1rem;max-width:360px;line-height:1.6;}
+.retry-btn{padding:.42rem 1rem;border-radius:8px;background:rgba(0,180,166,.12);border:1px solid rgba(0,180,166,.25);color:var(--teal-light);cursor:pointer;font-size:.78rem;}
+.retry-btn:hover{background:rgba(0,180,166,.22);}
+
+/* Cards */
+.hosp-card{background:var(--card);border:1px solid var(--border);border-radius:15px;padding:1.1rem;transition:all .2s;}
+.hosp-card:hover{border-color:rgba(0,180,166,.25);transform:translateY(-1px);}
+.hosp-top{display:flex;align-items:flex-start;gap:.9rem;margin-bottom:.9rem;}
+.hosp-logo{width:44px;height:44px;border-radius:12px;background:rgba(0,180,166,.1);border:1px solid rgba(0,180,166,.2);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;}
+.hosp-name{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;margin-bottom:.2rem;}
+.hosp-type{font-size:.76rem;color:rgba(255,255,255,.4);}
+.hosp-dist{margin-left:auto;font-size:.78rem;color:var(--teal-light);font-weight:600;white-space:nowrap;}
+.hosp-tags{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.9rem;}
+.hosp-tag{padding:.2rem .55rem;border-radius:99px;background:rgba(255,255,255,.06);font-size:.7rem;color:rgba(255,255,255,.5);}
+.hosp-actions{display:flex;gap:.6rem;}
+.hosp-btn{flex:1;padding:.55rem;border-radius:9px;font-size:.78rem;font-weight:500;cursor:pointer;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.7);transition:all .18s;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:.3rem;}
+.hosp-btn:hover{border-color:rgba(0,180,166,.3);color:#fff;}
+.hosp-btn.primary-btn{background:rgba(0,180,166,.12);border-color:rgba(0,180,166,.25);color:var(--teal-light);}
+.hosp-btn:disabled{opacity:0.4;cursor:not-allowed;}
+.status-open{color:#4ade80;font-size:.72rem;font-weight:600;}
+.status-closed{color:#f87171;font-size:.72rem;font-weight:600;}
+.status-unknown{color:rgba(255,255,255,.3);font-size:.72rem;}
+.skel-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:15px;padding:1.1rem;margin-bottom:.9rem;animation:skel 1.4s ease-in-out infinite;}
+.skel-line{height:.72rem;border-radius:99px;background:rgba(255,255,255,.07);margin-bottom:.55rem;}
+@keyframes skel{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes fade-up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* Modal styles */
+.modal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+}
+.modal-container {
+  position: relative;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  overflow: hidden;
+  z-index: 2010;
+  display: flex;
+  flex-direction: column;
+  animation: fade-up 0.2s ease;
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.modal-header h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+}
+.modal-close {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.5);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.2rem;
+  line-height: 1;
+}
+.modal-close:hover { color: #fff; }
+.modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+.modal-footer {
+  display: flex;
+  gap: 0.8rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.hospital-info {
+  background: rgba(0,180,166,0.08);
+  border-left: 4px solid var(--teal);
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  margin-bottom: 1.2rem;
+}
+.hosp-address {
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.6);
+  margin-top: 0.2rem;
+}
+.travel-times {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+.travel-time-item {
+  background: rgba(255,255,255,0.05);
+  padding: 0.4rem 1rem;
+  border-radius: 40px;
+  font-size: 0.8rem;
+  display: flex;
+  gap: 0.6rem;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.travel-time-item span:first-child { opacity: 0.7; }
+.travel-time-item span:last-child {
+  color: var(--teal-light);
+  font-weight: 600;
+}
+.steps-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.8rem;
+  color: rgba(255,255,255,0.9);
+}
+.steps-list {
+  max-height: 300px;
+  overflow-y: auto;
+  background: rgba(0,0,0,0.2);
+  border-radius: 16px;
+  padding: 0.2rem 0;
+}
+.step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 0.85rem;
+}
+.step-item:last-child { border-bottom: none; }
+.step-icon {
+  font-size: 1.1rem;
+  min-width: 24px;
+  text-align: center;
+}
+.step-text {
+  flex: 1;
+  line-height: 1.4;
+  color: rgba(255,255,255,0.9);
+}
+.step-distance {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.4);
+  white-space: nowrap;
+  margin-left: 0.5rem;
+}
+.loading-steps {
+  text-align: center;
+  padding: 2rem;
+  color: rgba(255,255,255,0.4);
+}
+.error-steps {
+  color: #f87171;
+  text-align: center;
+  padding: 1.5rem;
+}
+</style>
+</head>
+<body>
+
+<div id="loader"><div class="loader-logo">Zed</div><div class="loader-bar-wrap"><div class="loader-bar"></div></div></div>
+<div id="nav-overlay"></div>
+
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><a href="index.html" class="logo">Zed</a><span class="logo-badge">Pro</span></div>
+    <div class="user-block"><div class="user-av">👤</div><div><div class="user-name" id="sb-name">…</div><div class="user-sub">✦ Premium</div></div></div>
+    <div style="flex:1;overflow-y:auto">
+      <div class="nav-section"><div class="nav-label">Main</div>
+        <a href="dashboard.html" class="nav-item"><span class="nav-icon">📊</span>Dashboard</a>
+        <a href="chat.html"      class="nav-item"><span class="nav-icon">🤖</span>AI Chat</a>
+        <a href="symptoms.html"  class="nav-item"><span class="nav-icon">🔬</span>Symptom Checker</a>
+        <a href="report.html"    class="nav-item"><span class="nav-icon">📋</span>Report Analyzer</a>
+        <a href="medicine-scanner.html" class="nav-item"><span class="nav-icon">💊</span>Medicine Scanner</a>
+      </div>
+      <div class="nav-section"><div class="nav-label">Health</div>
+        <a href="vitals.html"    class="nav-item"><span class="nav-icon">❤️</span>Vitals Check</a>
+        <a href="tips.html"      class="nav-item"><span class="nav-icon">💡</span>Health Tips</a>
+        <a href="hospitals.html" class="nav-item active"><span class="nav-icon">🏥</span>Hospitals</a>
+        <a href="profile.html"   class="nav-item"><span class="nav-icon">👤</span>My Profile</a>
+      </div>
+    </div>
+    <div class="sidebar-footer"><button class="emergency-btn" onclick="location.href='emergency.html'">🚨 Emergency</button></div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div><div class="topbar-title">Hospital Finder</div><div class="topbar-sub">Find care near you</div></div>
+      <div class="topbar-right"><button class="hamburger" onclick="zedMobileNav()">☰</button></div>
+    </div>
+    <div class="scroll-area">
+      <div class="hosp-wrap anim-1">
+
+        <div class="search-bar">
+          <div class="search-input-wrap">
+            <span class="search-icon">🔍</span>
+            <input id="hosp-search" type="text" placeholder="Search by name or specialty…" oninput="onSearchInput()"/>
+          </div>
+          <button class="btn btn-primary" onclick="locateAndLoad()" style="font-size:.8rem;padding:.6rem .9rem;white-space:nowrap">📍 Near Me</button>
+        </div>
+
+        <div class="filter-row">
+          <button class="filter-pill active" onclick="setFilter('all',this)">All</button>
+          <button class="filter-pill" onclick="setFilter('emergency',this)">🚨 Emergency</button>
+          <button class="filter-pill" onclick="setFilter('general',this)">🏥 General</button>
+          <button class="filter-pill" onclick="setFilter('cardiac',this)">💔 Cardiac</button>
+          <button class="filter-pill" onclick="setFilter('pediatric',this)">👶 Pediatric</button>
+          <button class="filter-pill" onclick="setFilter('clinic',this)">🩺 Clinic</button>
+        </div>
+
+        <!-- Map placeholder – will be replaced by leaflet map -->
+        <div id="map-container">
+          <div class="map-state">
+            <span class="ico">🗺️</span>
+            <span>Click <strong>📍 Near Me</strong> to load the map</span>
+          </div>
+        </div>
+
+        <div id="hosp-list"></div>
+      </div>
+      <div class="page-footer">Developed by ACE. Zed does not replace professional medical advice.</div>
+    </div>
+  </div>
+</div>
+<!-- Directions Modal -->
+<div id="routeModal" class="modal" style="display: none;">
+  <div class="modal-overlay" onclick="closeRouteModal()"></div>
+  <div class="modal-container">
+    <div class="modal-header">
+      <h3>🗺️ Directions</h3>
+      <button class="modal-close" onclick="closeRouteModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody">
+      <div class="hospital-info" id="modalHospitalInfo">
+        <div class="hosp-name" id="modalHospName"></div>
+        <div class="hosp-address" id="modalHospAddress"></div>
+      </div>
+      <div class="travel-times" id="travelTimes">
+        <div class="travel-time-item"><span>🚗 Driving</span> <span id="drivingTime">—</span></div>
+        <div class="travel-time-item"><span>🚶 Walking</span> <span id="walkingTime">—</span></div>
+        <div class="travel-time-item"><span>🚌 Public transit</span> <span id="transitTime">Not available</span></div>
+      </div>
+      <div class="steps-title">Step-by-step directions</div>
+      <div class="steps-list" id="stepsList">
+        <!-- Steps will be injected here -->
+        <div class="loading-steps">Loading directions…</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeRouteModal()">Close</button>
+      <button class="btn btn-primary" id="startRouteBtn">Start Route on Map</button>
+    </div>
+  </div>
+</div>
+
+<!-- Supabase & Zed core -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="local-auth.js"></script>
+<script src="zed-core.js"></script>
+<!-- Leaflet + Routing Machine -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+<script>
+// ============================================================
+//  HOSPITAL FINDER with Leaflet + OpenStreetMap + Routing
+//  (Modal directions + on‑map route)
+// ============================================================
+
+// --- State variables ---
+let userLat = null, userLng = null;
+let map = null;                // Leaflet map instance
+let allHospitals = [];         // raw data from Overpass
+let currentFilter = 'all';
+let markersLayer = null;       // Leaflet layer group for markers
+let routingControl = null;     // active routing control (to be replaced)
+let selectedHospital = null;   // hospital chosen for directions
+
+// UI helpers for map container
+function mapLoading(msg) {
+  document.getElementById('map-container').innerHTML = `<div class="map-state"><span class="ico">🗺️</span><span>${msg}</span></div>`;
+}
+function mapError(msg) {
+  document.getElementById('map-container').innerHTML = `
+    <div class="map-state">
+      <span class="ico">⚠️</span>
+      <div class="err-box">${msg}</div>
+      <button class="retry-btn" onclick="locateAndLoad()">🔄 Try Again</button>
+    </div>`;
+}
+function mapReady() {
+  document.getElementById('map-container').innerHTML = '<div id="map"></div>';
+}
+
+// --- Geolocation ---
+function getPosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('This browser does not support geolocation.')); return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, err => {
+      reject(new Error({
+        1: 'Location access denied.<br>Click the 🔒 icon in your browser address bar → Allow location → Try Again.',
+        2: 'Location unavailable. Try Again.',
+        3: 'Location timed out. Try Again.',
+      }[err.code] || 'Location error.'));
+    }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
+  });
+}
+
+// --- Haversine distance ---
+function km(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) ** 2 +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// --- Overpass API query (expanded to include clinics and healthcare tags) ---
+async function searchNearbyOSM(lat, lng, radius = 5000) {
+  const overpassUrl = 'https://overpass-api.de/api/interpreter';
+  // Include both amenity=hospital/clinic and healthcare=hospital/clinic
+  const query = `[out:json];(
+    node["amenity"~"^(hospital|clinic)$"](around:${radius},${lat},${lng});
+    way["amenity"~"^(hospital|clinic)$"](around:${radius},${lat},${lng});
+    relation["amenity"~"^(hospital|clinic)$"](around:${radius},${lat},${lng});
+    node["healthcare"~"^(hospital|clinic)$"](around:${radius},${lat},${lng});
+    way["healthcare"~"^(hospital|clinic)$"](around:${radius},${lat},${lng});
+    relation["healthcare"~"^(hospital|clinic)$"](around:${radius},${lat},${lng});
+  );out center tags;`;
+
+  const resp = await fetch(overpassUrl, {
+    method: 'POST',
+    body: query
+  });
+  if (!resp.ok) throw new Error(`Overpass API error: ${resp.status}`);
+  const data = await resp.json();
+
+  const hospitals = [];
+  for (let el of data.elements) {
+    let osmLat, osmLon;
+    if (el.type === 'node') {
+      osmLat = el.lat;
+      osmLon = el.lon;
+    } else if (el.center) {
+      osmLat = el.center.lat;
+      osmLon = el.center.lon;
+    } else {
+      continue;
+    }
+
+    const distance = km(lat, lng, osmLat, osmLon);
+    const tags = el.tags || {};
+    const name = tags.name || 'Unnamed hospital';
+    const phone = tags.phone || tags['contact:phone'] || '';
+    let vicinity = '';
+    if (tags['addr:street']) {
+      vicinity = tags['addr:street'];
+      if (tags['addr:housenumber']) vicinity = tags['addr:housenumber'] + ' ' + vicinity;
+      if (tags['addr:city']) vicinity += ', ' + tags['addr:city'];
+    } else {
+      vicinity = tags['addr:city'] || tags['addr:place'] || '';
+    }
+
+    const types = ['hospital'];
+    if (tags.emergency === 'yes') types.push('emergency');
+    if (tags.healthcare_specialty) {
+      const spec = tags.healthcare_specialty.toLowerCase();
+      if (spec.includes('cardiac') || spec.includes('cardiology')) types.push('cardiac');
+      if (spec.includes('pediatric') || spec.includes('children')) types.push('pediatric');
+    }
+    if (tags.healthcare === 'clinic' || tags.amenity === 'clinic') types.push('clinic');
+    if (!tags.emergency && !tags.healthcare_specialty) types.push('general');
+
+    hospitals.push({
+      id: `${el.type}/${el.id}`,
+      name: name,
+      vicinity: vicinity || 'address unavailable',
+      phone: phone,
+      openNow: null,
+      types: types,
+      location: { lat: osmLat, lng: osmLon },
+      distance: distance,
+    });
+  }
+
+  hospitals.sort((a,b) => a.distance - b.distance);
+  return hospitals;
+}
+
+// --- Initialize Leaflet map ---
+function initMap(lat, lng) {
+  mapReady();
+
+  map = L.map('map').setView([lat, lng], 14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+  }).addTo(map);
+
+  // User marker: crisp blue circle
+  L.marker([lat, lng], {
+    icon: L.divIcon({
+      className: 'user-loc-marker',
+      html: '<div style="background-color:#4285F4; width:20px; height:20px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(0,0,0,0.3);"></div>',
+      iconSize: [26, 26],
+      popupAnchor: [0, -13]
+    }),
+    title: 'You are here'
+  }).addTo(map).bindPopup('Your location');
+
+  markersLayer = L.layerGroup().addTo(map);
+}
+
+// --- Add markers from hospital list ---
+function addMarkers(hospitals) {
+  if (!map || !markersLayer) return;
+  markersLayer.clearLayers();
+
+  hospitals.slice(0, 30).forEach(h => {
+    const marker = L.marker([h.location.lat, h.location.lng])
+      .bindPopup(`
+        <b>${esc(h.name)}</b><br>
+        ${esc(h.vicinity)}<br>
+        📍 ${h.distance.toFixed(1)} km
+        ${h.phone ? '<br>📞 ' + esc(h.phone) : ''}
+      `);
+    markersLayer.addLayer(marker);
+  });
+
+  if (hospitals.length > 0) {
+    const bounds = L.latLngBounds([[userLat, userLng]]);
+    hospitals.slice(0,30).forEach(h => bounds.extend([h.location.lat, h.location.lng]));
+    map.fitBounds(bounds, { padding: [50, 50] });
+  } else {
+    map.setView([userLat, userLng], 14);
+  }
+}
+
+// ================== MODAL ROUTING FEATURE ==================
+
+// Open modal and fetch directions
+function openRouteModal(hospitalId) {
+  if (!userLat || !userLng) {
+    alert('Your location is not known. Click "📍 Near Me" first.');
+    return;
+  }
+  const hospital = allHospitals.find(h => h.id === hospitalId);
+  if (!hospital) return;
+
+  selectedHospital = hospital;
+
+  // Show modal
+  document.getElementById('routeModal').style.display = 'flex';
+
+  // Populate basic info
+  document.getElementById('modalHospName').textContent = esc(hospital.name);
+  document.getElementById('modalHospAddress').textContent = esc(hospital.vicinity) || 'Address unavailable';
+  document.getElementById('drivingTime').textContent = '—';
+  document.getElementById('walkingTime').textContent = '—';
+  document.getElementById('stepsList').innerHTML = '<div class="loading-steps">Loading directions…</div>';
+
+  // Fetch driving and walking directions
+  fetchDirections(hospital);
+}
+
+function closeRouteModal() {
+  document.getElementById('routeModal').style.display = 'none';
+  selectedHospital = null;
+}
+
+// Fetch directions from OSRM
+async function fetchDirections(hospital) {
+  const urlDriving = `https://router.project-osrm.org/route/v1/driving/${userLng},${userLat};${hospital.location.lng},${hospital.location.lat}?steps=true&overview=false&alternatives=false`;
+  const urlWalking = `https://router.project-osrm.org/route/v1/walking/${userLng},${userLat};${hospital.location.lng},${hospital.location.lat}?steps=true&overview=false&alternatives=false`;
+
+  try {
+    const [drivingResp, walkingResp] = await Promise.all([
+      fetch(urlDriving),
+      fetch(urlWalking)
+    ]);
+
+    if (!drivingResp.ok || !walkingResp.ok) {
+      throw new Error('Failed to fetch directions');
+    }
+
+    const drivingData = await drivingResp.json();
+    const walkingData = await walkingResp.json();
+
+    // Durations in seconds
+    const drivingDuration = drivingData.routes?.[0]?.duration;
+    const walkingDuration = walkingData.routes?.[0]?.duration;
+
+    document.getElementById('drivingTime').textContent = drivingDuration ? formatTime(drivingDuration) : 'N/A';
+    document.getElementById('walkingTime').textContent = walkingDuration ? formatTime(walkingDuration) : 'N/A';
+
+    // Show driving steps (most detailed)
+    const steps = drivingData.routes?.[0]?.legs?.[0]?.steps;
+    if (steps && steps.length) {
+      renderSteps(steps);
+    } else {
+      document.getElementById('stepsList').innerHTML = '<div class="error-steps">No step‑by‑step directions available.</div>';
+    }
+  } catch (err) {
+    console.error('Directions fetch error:', err);
+    document.getElementById('stepsList').innerHTML = '<div class="error-steps">⚠️ Could not load directions. Try again later.</div>';
+    document.getElementById('drivingTime').textContent = 'Error';
+    document.getElementById('walkingTime').textContent = 'Error';
+  }
+}
+
+function formatTime(seconds) {
+  if (!seconds || seconds < 0) return '—';
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  if (hrs > 0) return `${hrs}h ${mins}m`;
+  return `${mins} min`;
+}
+
+function renderSteps(steps) {
+  const stepsList = document.getElementById('stepsList');
+  stepsList.innerHTML = steps.map(step => {
+    const type = step.maneuver?.type || 'other';
+    let icon = '➡️';
+    if (type.includes('turn')) icon = step.maneuver.modifier === 'left' ? '⬅️' : '➡️';
+    else if (type === 'depart') icon = '🚩';
+    else if (type === 'arrive') icon = '🏁';
+    else if (type.includes('roundabout')) icon = '🔄';
+    else if (type.includes('merge')) icon = '🔀';
+
+    const instruction = step.maneuver?.modifier
+      ? `${step.maneuver.type} ${step.maneuver.modifier}`
+      : step.maneuver?.type || 'Continue';
+
+    const distance = step.distance
+      ? (step.distance < 1000 ? `${Math.round(step.distance)} m` : `${(step.distance/1000).toFixed(1)} km`)
+      : '';
+
+    return `
+      <div class="step-item">
+        <span class="step-icon">${icon}</span>
+        <span class="step-text">${instruction} onto ${step.name || 'unknown road'}</span>
+        <span class="step-distance">${distance}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+// Draw route on map using Leaflet Routing Machine (called by "Start Route" button)
+function drawRouteOnMap(hospital) {
+  if (!userLat || !userLng || !map) return;
+
+  if (routingControl) {
+    map.removeControl(routingControl);
+  }
+
+  routingControl = L.Routing.control({
+    waypoints: [
+      L.latLng(userLat, userLng),
+      L.latLng(hospital.location.lat, hospital.location.lng)
+    ],
+    routeWhileDragging: false,
+    showAlternatives: false,
+    lineOptions: {
+      styles: [{ color: '#00b4a6', weight: 5 }]
+    },
+    router: L.Routing.osrmv1({
+      serviceUrl: 'https://router.project-osrm.org/route/v1'
+    }),
+    createMarker: function() { return null; }
+  }).addTo(map);
+
+  setTimeout(() => {
+    const bounds = L.latLngBounds([[userLat, userLng], [hospital.location.lat, hospital.location.lng]]);
+    map.fitBounds(bounds, { padding: [50, 50] });
+  }, 300);
+
+  closeRouteModal(); // optional: close after drawing
+}
+
+// ============================================================
+
+// --- Render hospital list cards ---
+function renderList(list) {
+  const el = document.getElementById('hosp-list');
+  if (!list.length) {
+    el.innerHTML = '<div class="card" style="text-align:center;padding:1.5rem;color:rgba(255,255,255,.4)">No hospitals found.</div>';
+    return;
+  }
+
+  el.innerHTML = list.map((h, i) => {
+    const status = '<span class="status-unknown">● hours unknown</span>';
+    let displayType = (h.types.find(t => !['hospital','health'].includes(t)) || 'hospital').replace(/_/g, ' ');
+    const phoneHtml = h.phone
+      ? `<a href="tel:${encodeURIComponent(h.phone)}" class="hosp-btn">📞 ${h.phone}</a>`
+      : `<button class="hosp-btn" disabled>📞 No number</button>`;
+
+    // Directions button now opens modal
+    const directionsHtml = `<button class="hosp-btn primary-btn" onclick="openRouteModal('${h.id}')">🗺️ Route on map</button>`;
+
+    return `
+      <div class="hosp-card" style="animation:fade-up .3s ease ${i*40}ms both">
+        <div class="hosp-top">
+          <div class="hosp-logo">🏥</div>
+          <div style="flex:1;min-width:0">
+            <div class="hosp-name">${esc(h.name)}</div>
+            <div class="hosp-type">${esc(h.vicinity)}</div>
+            ${status}
+          </div>
+          <div class="hosp-dist">${h.distance.toFixed(1)} km</div>
+        </div>
+        <div class="hosp-tags">
+          <span class="hosp-tag">${esc(displayType)}</span>
+          ${h.phone ? '<span class="hosp-tag">📞 phone</span>' : ''}
+        </div>
+        <div class="hosp-actions">
+          ${phoneHtml}
+          ${directionsHtml}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function skeleton() {
+  document.getElementById('hosp-list').innerHTML = [1,2,3].map(()=>`
+    <div class="skel-card">
+      <div class="skel-line" style="width:55%"></div>
+      <div class="skel-line" style="width:80%"></div>
+      <div class="skel-line" style="width:35%;margin-top:.3rem"></div>
+    </div>`).join('');
+}
+
+// --- Filter & search ---
+function applyFilter() {
+  const q = document.getElementById('hosp-search').value.trim().toLowerCase();
+  const out = allHospitals.filter(h => {
+    const txt = (h.name + ' ' + h.types.join(' ') + ' ' + h.vicinity).toLowerCase();
+    const mF =
+      currentFilter==='all'       ? true :
+      currentFilter==='emergency' ? txt.includes('emergency') :
+      currentFilter==='general'   ? txt.includes('general')||txt.includes('hospital') :
+      currentFilter==='cardiac'   ? txt.includes('cardiac') :
+      currentFilter==='pediatric' ? txt.includes('pediatric')||txt.includes('children') :
+      currentFilter==='clinic'    ? txt.includes('clinic') : true;
+    const mQ = !q || txt.includes(q);
+    return mF && mQ;
+  });
+  renderList(out);
+  addMarkers(out);
+}
+
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  if (allHospitals.length) applyFilter();
+}
+
+let st = null;
+function onSearchInput() { clearTimeout(st); st = setTimeout(applyFilter, 280); }
+
+// --- Main location + data flow ---
+async function locateAndLoad() {
+  skeleton();
+  mapLoading('Getting your location…');
+  try {
+    const pos = await getPosition();
+    userLat = pos.coords.latitude;
+    userLng = pos.coords.longitude;
+
+    mapLoading('Searching for hospitals (OpenStreetMap)…');
+
+    allHospitals = await searchNearbyOSM(userLat, userLng, 5000);
+
+    initMap(userLat, userLng);
+    applyFilter();
+
+    if (typeof zedToast === 'function') {
+      zedToast(
+        allHospitals.length ? `Found ${allHospitals.length} hospitals nearby` : 'No hospitals found within 5 km',
+        allHospitals.length ? 'success' : 'warn'
+      );
+    }
+  } catch (err) {
+    console.error('[HospitalFinder]', err.message);
+    mapError(err.message || 'Failed to load data. Check console.');
+    document.getElementById('hosp-list').innerHTML = '';
+  }
+}
+
+function esc(s = '') {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// --- Event listener for "Start Route" button inside modal ---
+document.addEventListener('DOMContentLoaded', function() {
+  const startBtn = document.getElementById('startRouteBtn');
+  if (startBtn) {
+    startBtn.addEventListener('click', function() {
+      if (selectedHospital) {
+        drawRouteOnMap(selectedHospital);
+      } else {
+        alert('No hospital selected.');
+      }
+    });
+  }
+});
+
+// --- Boot ---
+(async () => {
+  zedHideLoader();
+  const user = await ZedAuth.requireAuth();
+  if (!user) return;
+  document.getElementById('sb-name').textContent = user.user_metadata?.first_name || user.email;
+  locateAndLoad();
+})();
+</script>
+</body>
+</html>

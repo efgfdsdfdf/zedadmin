@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Zed — Symptom Checker</title>
+<link rel="stylesheet" href="zed.css"/>
+<style>
+.sym-wrap{padding:1.2rem;display:flex;flex-direction:column;gap:1.1rem;}
+.step-bar{display:flex;gap:.4rem;align-items:center;}
+.step-dot{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0;transition:all .3s;}
+.step-dot.done{background:var(--teal);color:var(--ink);}
+.step-dot.active{background:rgba(0,180,166,.2);border:2px solid var(--teal);color:var(--teal);}
+.step-dot.idle{background:rgba(255,255,255,.07);color:rgba(255,255,255,.3);}
+.step-line{flex:1;height:2px;background:rgba(255,255,255,.08);border-radius:99px;transition:background .3s;}
+.step-line.done{background:var(--teal);}
+.sym-panel{display:none;}
+.sym-panel.active{display:flex;flex-direction:column;gap:1rem;animation:fade-up .4s ease both;}
+.sym-tags{display:flex;flex-wrap:wrap;gap:.45rem;}
+.sym-tag{padding:.35rem .8rem;border-radius:99px;font-size:.8rem;cursor:pointer;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.7);transition:all .18s;user-select:none;}
+.sym-tag:hover{border-color:rgba(0,180,166,.4);}
+.sym-tag.on{background:rgba(0,180,166,.15);border-color:var(--teal);color:var(--teal-light);font-weight:500;}
+.sev-slider{width:100%;height:6px;border-radius:99px;-webkit-appearance:none;appearance:none;background:linear-gradient(90deg,var(--success),var(--warn),var(--error));outline:none;cursor:pointer;}
+.sev-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.4);cursor:pointer;}
+.sev-labels{display:flex;justify-content:space-between;font-size:.68rem;color:rgba(255,255,255,.3);margin-top:.4rem;}
+</style>
+</head>
+<body>
+<div id="loader"><div class="loader-logo">Zed</div><div class="loader-bar-wrap"><div class="loader-bar"></div></div></div>
+<div id="nav-overlay"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><a href="index.html" class="logo">Zed</a><span class="logo-badge">Pro</span></div>
+    <div class="user-block"><div class="user-av">👤</div><div><div class="user-name" id="sb-name">…</div><div class="user-sub">✦ Premium</div></div></div>
+    <div style="flex:1;overflow-y:auto">
+      <div class="nav-section"><div class="nav-label">Main</div>
+        <a href="dashboard.html" class="nav-item"><span class="nav-icon">📊</span>Dashboard</a>
+        <a href="chat.html"      class="nav-item"><span class="nav-icon">🤖</span>AI Chat</a>
+        <a href="symptoms.html"  class="nav-item active"><span class="nav-icon">🔬</span>Symptom Checker</a>
+        <a href="report.html"    class="nav-item"><span class="nav-icon">📋</span>Report Analyzer</a>
+                <a href="medicine-scanner.html"   class="nav-item"><span class="nav-icon">💊</span>Medicine Scanner</a>
+      </div>
+      <div class="nav-section"><div class="nav-label">Health</div>
+        <a href="tips.html"      class="nav-item"><span class="nav-icon">💡</span>Health Tips</a>
+        <a href="hospitals.html" class="nav-item"><span class="nav-icon">🏥</span>Hospitals</a>
+        <a href="profile.html"   class="nav-item"><span class="nav-icon">👤</span>My Profile</a>
+      </div>
+    </div>
+    <div class="sidebar-footer"><button class="emergency-btn" onclick="location.href='emergency.html'">🚨 Emergency</button></div>
+  </aside>
+  <div class="main">
+   
+      <div class="topbar-right">
+        <button class="hamburger" onclick="zedMobileNav()"><span class="hamburger-mid"></span></button>
+         <div class="topbar">
+      <div><div class="topbar-title">Symptom Checker</div></div>
+
+      </div>
+    </div>
+    <div class="scroll-area">
+      <div class="sym-wrap anim-1">
+        <div class="step-bar">
+          <div class="step-dot active" id="sd1">1</div><div class="step-line" id="sl1"></div>
+          <div class="step-dot idle"   id="sd2">2</div><div class="step-line" id="sl2"></div>
+          <div class="step-dot idle"   id="sd3">3</div><div class="step-line" id="sl3"></div>
+          <div class="step-dot idle"   id="sd4">4</div>
+        </div>
+
+        <!-- Step 1 -->
+        <div class="sym-panel active" id="step1">
+          <div class="card">
+            <div class="card-title" style="margin-bottom:.35rem">Where is the discomfort?</div>
+            <p style="font-size:.8rem;color:rgba(255,255,255,.42);margin-bottom:1rem">Tap the body area affected</p>
+            <div class="sym-tags">
+              <button class="sym-tag" onclick="selectArea(this)">🧠 Head</button>
+              <button class="sym-tag" onclick="selectArea(this)">👁 Eyes</button>
+              <button class="sym-tag" onclick="selectArea(this)">👂 Ears</button>
+              <button class="sym-tag" onclick="selectArea(this)">👃 Nose</button>
+              <button class="sym-tag" onclick="selectArea(this)">🦷 Mouth/Throat</button>
+              <button class="sym-tag" onclick="selectArea(this)">🫁 Chest</button>
+              <button class="sym-tag" onclick="selectArea(this)">💔 Heart</button>
+              <button class="sym-tag" onclick="selectArea(this)">🫃 Abdomen</button>
+              <button class="sym-tag" onclick="selectArea(this)">🦴 Back</button>
+              <button class="sym-tag" onclick="selectArea(this)">💪 Arms</button>
+              <button class="sym-tag" onclick="selectArea(this)">🦵 Legs</button>
+              <button class="sym-tag" onclick="selectArea(this)">🌐 Whole body</button>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-full" onclick="goStep(2)" id="s1-next" disabled>Next: Select Symptoms →</button>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="sym-panel" id="step2">
+          <div class="card">
+            <div class="card-title" style="margin-bottom:.35rem">Select your symptoms</div>
+            <p style="font-size:.8rem;color:rgba(255,255,255,.42);margin-bottom:1rem">Pick all that apply</p>
+            <div class="sym-tags" id="sym-tags-list"></div>
+          </div>
+          <div class="card">
+            <div class="card-title" style="margin-bottom:.7rem">Any additional symptoms?</div>
+            <div class="field"><div class="field-wrap"><textarea id="extra-symptoms" placeholder="e.g. I also feel nauseous and dizzy…" style="min-height:65px;padding:.7rem .9rem;"></textarea></div></div>
+          </div>
+          <div style="display:flex;gap:.7rem">
+            <button class="btn btn-ghost" onclick="goStep(1)" style="font-size:.82rem">← Back</button>
+            <button class="btn btn-primary" onclick="goStep(3)" id="s2-next" style="flex:1;justify-content:center;font-size:.82rem" disabled>Next: Details →</button>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="sym-panel" id="step3">
+          <div class="card">
+            <div class="card-title" style="margin-bottom:1rem">How severe? <span id="sev-val" style="color:var(--teal-light);font-family:'Syne',sans-serif;font-size:1.1rem">5</span><span style="font-size:.72rem;color:rgba(255,255,255,.3)">/10</span></div>
+            <input type="range" class="sev-slider" id="severity" min="1" max="10" value="5" oninput="document.getElementById('sev-val').textContent=this.value"/>
+            <div class="sev-labels"><span>Mild</span><span>Moderate</span><span>Severe</span></div>
+          </div>
+          <div class="card">
+            <div class="card-title" style="margin-bottom:.8rem">How long?</div>
+            <div class="sym-tags">
+              <button class="sym-tag" onclick="selectDur(this)">Today</button>
+              <button class="sym-tag" onclick="selectDur(this)">1–2 days</button>
+              <button class="sym-tag" onclick="selectDur(this)">3–7 days</button>
+              <button class="sym-tag" onclick="selectDur(this)">1–2 weeks</button>
+              <button class="sym-tag" onclick="selectDur(this)">2+ weeks</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title" style="margin-bottom:.7rem">What makes it better or worse?</div>
+            <div class="field"><div class="field-wrap"><textarea id="modifiers" placeholder="e.g. Worse after eating, better with rest…" style="min-height:65px;padding:.7rem .9rem;"></textarea></div></div>
+          </div>
+          <div style="display:flex;gap:.7rem">
+            <button class="btn btn-ghost" onclick="goStep(2)" style="font-size:.82rem">← Back</button>
+            <button class="btn btn-primary" onclick="runCheck()" style="flex:1;justify-content:center;font-size:.82rem">🔬 Analyze →</button>
+          </div>
+        </div>
+
+        <!-- Step 4: Results -->
+        <div class="sym-panel" id="step4">
+          <div class="card" style="background:linear-gradient(135deg,rgba(0,180,166,.08),rgba(79,200,224,.04));border-color:rgba(0,180,166,.2)">
+            <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1rem">
+              <div style="width:36px;height:36px;border-radius:10px;background:rgba(0,180,166,.15);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">🤖</div>
+              <div><div style="font-family:'Syne',sans-serif;font-weight:700">AI Assessment</div><div style="font-size:.72rem;color:rgba(255,255,255,.38);margin-top:.1rem">Profile-aware analysis</div></div>
+            </div>
+            <div id="results-body" style="font-size:.86rem;line-height:1.7;color:rgba(255,255,255,.75)">
+              <div style="display:flex;gap:5px;align-items:center;padding:.5rem 0">
+                <span style="width:7px;height:7px;border-radius:50%;background:var(--teal);animation:dot-blink 1.2s infinite;display:inline-block"></span>
+                <span style="width:7px;height:7px;border-radius:50%;background:var(--teal);animation:dot-blink 1.2s .2s infinite;display:inline-block"></span>
+                <span style="width:7px;height:7px;border-radius:50%;background:var(--teal);animation:dot-blink 1.2s .4s infinite;display:inline-block"></span>
+                <span style="margin-left:.5rem;font-size:.82rem;color:rgba(255,255,255,.4)">Analyzing your symptoms…</span>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:.7rem;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="location.href='chat.html'" style="flex:1;justify-content:center;font-size:.82rem;min-width:140px">💬 Discuss with AI</button>
+            <button class="btn btn-ghost" onclick="location.href='hospitals.html'" style="flex:1;justify-content:center;font-size:.82rem;min-width:140px">🏥 Find Hospital</button>
+          </div>
+          <button class="btn btn-ghost btn-full" onclick="resetChecker()" style="font-size:.8rem">↩ Start New Check</button>
+        </div>
+      </div>
+      <div class="page-footer">Developed by ACE. Zed does not replace professional medical advice. Always consult a qualified healthcare provider.</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="local-auth.js"></script>
+<script src="zed-core.js"></script>
+<script>
+zedHideLoader();
+let S={area:'',symptoms:[],duration:'',profile:null};
+let currentUser=null;
+const SYM={
+  '🧠 Head':['Headache','Throbbing pain','Dizziness','Confusion','Neck stiffness','Light sensitivity'],
+  '👁 Eyes':['Blurred vision','Eye pain','Redness','Watery eyes','Light sensitivity','Double vision'],
+  '👂 Ears':['Ear pain','Hearing loss','Ringing','Discharge','Itching','Fullness'],
+  '👃 Nose':['Runny nose','Congestion','Sneezing','Loss of smell','Nosebleed'],
+  '🦷 Mouth/Throat':['Sore throat','Difficulty swallowing','Mouth sores','Hoarseness','Dry mouth'],
+  '🫁 Chest':['Chest pain','Shortness of breath','Coughing','Wheezing','Chest tightness'],
+  '💔 Heart':['Palpitations','Chest pressure','Racing heart','Skipped beats','Dizziness'],
+  '🫃 Abdomen':['Abdominal pain','Nausea','Vomiting','Diarrhea','Constipation','Bloating'],
+  '🦴 Back':['Lower back pain','Upper back pain','Stiffness','Radiating pain','Muscle spasm'],
+  '💪 Arms':['Arm pain','Weakness','Numbness','Tingling','Joint pain','Swelling'],
+  '🦵 Legs':['Leg pain','Swelling','Cramps','Weakness','Numbness','Varicose veins'],
+  '🌐 Whole body':['Fever','Fatigue','Chills','Night sweats','Weight loss','General malaise','Weakness']
+};
+async function init(){
+  currentUser=await ZedAuth.requireAuth();if(!currentUser)return;
+  document.getElementById('sb-name').textContent=currentUser.user_metadata?.first_name||currentUser.email;
+  const{data:p}=await ZedProfile.get(currentUser.id);S.profile=p;
+}
+function selectArea(el){
+  document.querySelectorAll('#step1 .sym-tag').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');S.area=el.textContent.trim();
+  document.getElementById('s1-next').disabled=false;
+  const tags=(SYM[S.area]||SYM['🌐 Whole body']);
+  document.getElementById('sym-tags-list').innerHTML=tags.map(s=>`<button class="sym-tag" onclick="toggleSym(this)">${s}</button>`).join('');
+}
+function toggleSym(el){
+  el.classList.toggle('on');
+  S.symptoms=Array.from(document.querySelectorAll('#sym-tags-list .sym-tag.on')).map(t=>t.textContent);
+  document.getElementById('s2-next').disabled=S.symptoms.length===0;
+}
+function selectDur(el){
+  document.querySelectorAll('#step3 .card:nth-child(2) .sym-tag').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');S.duration=el.textContent.trim();
+}
+function goStep(n){
+  [1,2,3,4].forEach(i=>{
+    document.getElementById('step'+i).classList.toggle('active',i===n);
+    const sd=document.getElementById('sd'+i);
+    if(i<n){sd.className='step-dot done';}
+    else if(i===n){sd.className='step-dot active';}
+    else{sd.className='step-dot idle';}
+    if(i<4){document.getElementById('sl'+i).classList.toggle('done',i<n);}
+  });
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+async function runCheck(){
+  goStep(4);
+  const sev=document.getElementById('severity').value;
+  const extra=document.getElementById('extra-symptoms').value;
+  const mods=document.getElementById('modifiers').value;
+  const p=S.profile;
+  const prompt=`You are Zed AI. Analyze these symptoms and give a structured medical assessment.
+
+PATIENT: ${p?`Age ${p.age||'?'}, ${p.gender||'Unknown gender'}, Blood ${p.blood_group||'?'}. Conditions: ${p.conditions||'None'}. Meds: ${p.medications||'None'}. Allergies: ${p.allergies||'None'}. Family: ${p.family_history||'Unknown'}.`:'Profile unavailable.'}
+
+SYMPTOMS: Area: ${S.area}. Symptoms: ${S.symptoms.join(', ')}. Extra: ${extra||'None'}. Severity: ${sev}/10. Duration: ${S.duration||'Unknown'}. Modifiers: ${mods||'None'}.
+
+Format your response with these exact bold headers:
+**POSSIBLE CONDITIONS** — list 2-3 with High/Medium/Low likelihood
+**MEDICAL REASONING** — 2-3 sentences using profile context
+**RECOMMENDED STEPS** — numbered 1-4 actions
+**WARNING SIGNS** — bullet list of red-flag symptoms
+**NOTE** — one-line disclaimer
+
+Be concise, professional, and empathetic.`;
+  try{
+    const text = await ZedAI.chat([{role:'user',content:prompt}],{max_tokens:1000});
+    document.getElementById('results-body').innerHTML=text
+      .replace(/\*\*(.*?)\*\*/g,'<strong style="color:var(--teal-light);display:block;margin-top:.9rem;margin-bottom:.3rem;font-size:.76rem;letter-spacing:.06em;text-transform:uppercase">$1</strong>')
+      .replace(/\n/g,'<br>');
+    if(currentUser){
+      await ZedSymptoms.save(currentUser.id, {
+        area: S.area,
+        symptoms: S.symptoms,
+        severity: parseInt(sev),
+        duration: S.duration,
+        result: text
+      });
+    }
+  }catch(e){
+    document.getElementById('results-body').innerHTML='<span style="color:var(--error)">'+( e.message||'Connection error. Please try again.')+'</span>';
+  }
+}
+function resetChecker(){S={area:'',symptoms:[],duration:'',profile:S.profile};document.querySelectorAll('.sym-tag').forEach(t=>t.classList.remove('on'));document.getElementById('s1-next').disabled=true;document.getElementById('s2-next').disabled=true;goStep(1);}
+init();
+</script>
+</body></html>

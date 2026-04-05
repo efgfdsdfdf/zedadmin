@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Zed - Find Doctors</title>
+<link rel="stylesheet" href="zed.css" />
+<style>
+.page { padding:1.2rem; display:flex; flex-direction:column; gap:1rem; }
+.hero { background:linear-gradient(135deg, rgba(0,180,166,.16), rgba(79,200,224,.08)); border:1px solid rgba(0,180,166,.28); border-radius:16px; padding:1rem 1.2rem; }
+.hero h1 { font-family:'Syne',sans-serif; font-size:1.4rem; }
+.hero p { color:var(--muted); font-size:.9rem; margin-top:.2rem; }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:.8rem; }
+.doc { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:1rem; display:flex; flex-direction:column; gap:.5rem; }
+.name { font-family:'Syne',sans-serif; font-size:1.05rem; }
+.muted { color:var(--muted); font-size:.85rem; }
+.pill { display:inline-flex; width:max-content; padding:.18rem .52rem; border-radius:999px; font-size:.68rem; border:1px solid rgba(0,180,166,.35); color:var(--teal-light); background:rgba(0,180,166,.12); }
+.actions { margin-top:.45rem; display:flex; gap:.45rem; }
+.empty { padding:1.2rem; text-align:center; color:var(--muted); border:1px dashed rgba(255,255,255,.2); border-radius:12px; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="main">
+    <div class="topbar">
+      <div><div class="topbar-title">Find Verified Doctors</div><div class="topbar-sub">Book sessions with licensed professionals</div></div>
+      <div class="topbar-right">
+        <a href="bookings.html" class="btn btn-ghost btn-sm">My Bookings</a>
+        <a href="dashboard.html" class="btn btn-primary btn-sm">Dashboard</a>
+      </div>
+    </div>
+    <div class="scroll-area">
+      <div class="page">
+        <div class="hero">
+          <h1>Choose a specialist</h1>
+          <p>Only verified doctors are shown.</p>
+        </div>
+        <div class="grid" id="doctor-grid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="local-auth.js"></script>
+<script src="zed-core.js"></script>
+<script>
+let currentUser = null;
+
+async function api(path, options = {}, needsAuth = false) {
+  const apiBase = (typeof ZED_API_BASE !== 'undefined' && ZED_API_BASE)
+    ? ZED_API_BASE
+    : ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== '3000'
+      ? 'http://localhost:3000'
+      : '');
+  const url = path.startsWith('/api/') ? `${apiBase}${path}` : path;
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  if (needsAuth) {
+    const { data } = await _supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) throw new Error('No active session');
+    headers.Authorization = `Bearer ${token}`;
+  }
+  const res = await fetch(url, { ...options, headers });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`);
+  return body;
+}
+
+function renderDoctors(doctors) {
+  const root = document.getElementById('doctor-grid');
+  if (!doctors?.length) {
+    root.innerHTML = '<div class="empty">No verified doctors available yet.</div>';
+    return;
+  }
+  root.innerHTML = doctors.map((d) => `
+    <div class="doc">
+      <div class="pill">${d.specialty}</div>
+      <div class="name">${d.full_name || 'Doctor'}</div>
+      <div class="muted">Price: ₦${Number(d.price_per_session || 0).toLocaleString()} / session</div>
+      <div class="muted">${d.bio || 'No bio yet.'}</div>
+      <div class="muted">Rating: ${d.rating ?? 'N/A'}</div>
+      <div class="muted">Availability: ${JSON.stringify(d.availability || {})}</div>
+      <div class="actions">
+        <button class="btn btn-primary btn-sm" onclick="bookDoctor('${d.id}','${(d.full_name||'Doctor').replace(/'/g, "\\'")}')">Book</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function loadDoctors() {
+  try {
+    const data = await api('/api/telemedicine/doctors');
+    renderDoctors(data.doctors || []);
+  } catch (e) {
+    document.getElementById('doctor-grid').innerHTML = `<div class="empty">${e.message}</div>`;
+  }
+}
+
+async function bookDoctor(doctorId, doctorName) {
+  const scheduled = prompt(`Set appointment date/time with ${doctorName} (YYYY-MM-DDTHH:mm)`);
+  if (!scheduled) return;
+  try {
+    await api('/api/telemedicine/bookings', {
+      method: 'POST',
+      body: JSON.stringify({ doctor_id: doctorId, scheduled_time: scheduled })
+    }, true);
+    zedToast('Booking created. Complete payment in My Bookings.', 'success');
+    setTimeout(() => window.location.href = 'bookings.html', 700);
+  } catch (e) {
+    zedToast(e.message, 'error');
+  }
+}
+
+async function init() {
+  currentUser = await ZedAuth.requireAuth();
+  if (!currentUser) return;
+  loadDoctors();
+}
+
+init();
+</script>
+</body>
+</html>

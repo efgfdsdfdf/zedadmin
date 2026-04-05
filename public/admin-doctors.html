@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Zed - Admin Doctor Verification</title>
+<link rel="stylesheet" href="zed.css" />
+<style>
+.page { padding:1rem; display:flex; flex-direction:column; gap:.9rem; }
+.cardx { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:.9rem; }
+.title { font-family:'Syne',sans-serif; font-size:1rem; }
+.row { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:.7rem; }
+.doc { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:.8rem; display:flex; flex-direction:column; gap:.35rem; }
+.meta { color:var(--muted); font-size:.83rem; }
+.actions { margin-top:.5rem; display:flex; gap:.45rem; }
+.key { display:flex; gap:.45rem; flex-wrap:wrap; align-items:center; }
+.key input { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:#fff; border-radius:10px; padding:.5rem .65rem; min-width:240px; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="main">
+    <div class="topbar">
+      <div><div class="topbar-title">Admin Doctor Verification</div><div class="topbar-sub">Approve or reject doctor onboarding</div></div>
+      <div class="topbar-right"><a href="admin.html" class="btn btn-ghost btn-sm">Main Admin</a></div>
+    </div>
+    <div class="scroll-area">
+      <div class="page">
+        <div class="cardx key">
+          <input id="admin-key" type="password" placeholder="Enter ADMIN_DASHBOARD_KEY" />
+          <button class="btn btn-primary btn-sm" onclick="saveKey()">Save Key</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadDoctors()">Refresh</button>
+        </div>
+        <div class="row" id="doctors-root"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="local-auth.js"></script>
+<script src="zed-core.js"></script>
+<script>
+function getKey() { return sessionStorage.getItem('zed-admin-key') || ''; }
+
+function getAdminApiCandidates(path) {
+  const urls = [];
+  const base = (typeof ZED_API_BASE !== 'undefined' && ZED_API_BASE) ? String(ZED_API_BASE).trim() : '';
+  if (base) {
+    urls.push(`${base}${path}`);
+  }
+  if (typeof zedCandidateApiUrls === 'function') {
+    urls.push(...zedCandidateApiUrls(path));
+  }
+  urls.push(`${window.location.origin}${path}`);
+  urls.push(`http://localhost:3000${path}`);
+  urls.push(`http://127.0.0.1:3000${path}`);
+  return [...new Set(urls)];
+}
+
+async function adminApi(path, options = {}) {
+  const key = getKey();
+  if (!key) throw new Error('Admin key is required');
+
+  const { session } = await ZedAuth.getSession();
+  const authHeader = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+  const candidates = getAdminApiCandidates(path);
+  let lastError = null;
+
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': key,
+          ...authHeader,
+          ...(options.headers || {})
+        }
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        lastError = new Error(body.error || `Failed (${res.status}) @ ${url}`);
+        continue;
+      }
+      return body;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error('Failed to reach admin API');
+}
+
+function saveKey() {
+  const val = document.getElementById('admin-key').value.trim();
+  if (!val) { zedToast('Enter admin key first', 'warn'); return; }
+  sessionStorage.setItem('zed-admin-key', val);
+  zedToast('Admin key saved', 'success');
+  loadDoctors();
+}
+
+function doctorCard(d) {
+  return `
+    <div class="doc">
+      <div class="title">${d.full_name || 'Doctor'}</div>
+      <div class="meta">Email: ${d.email || 'n/a'}</div>
+      <div class="meta">Specialty: ${d.specialty || '-'}</div>
+      <div class="meta">License: ${d.license_number || '-'}</div>
+      <div class="meta">Price: NGN ${Number(d.price_per_session || 0).toLocaleString()}</div>
+      <div class="meta">Verified: ${d.verified ? 'YES' : 'NO'}</div>
+      <div class="meta">${d.license_document_url ? `<a href="${d.license_document_url}" target="_blank">View License Doc</a>` : 'No document'}</div>
+      <div class="actions">
+        <button class="btn btn-primary btn-sm" onclick="approveDoctor('${d.id}')">Approve</button>
+        <button class="btn btn-ghost btn-sm" onclick="rejectDoctor('${d.id}')">Reject</button>
+      </div>
+    </div>
+  `;
+}
+
+async function loadDoctors() {
+  const root = document.getElementById('doctors-root');
+  root.innerHTML = '<div class="meta">Loading doctors...</div>';
+  try {
+    const doctors = await adminApi('/api/telemedicine/admin/doctors');
+    root.innerHTML = doctors.length ? doctors.map(doctorCard).join('') : '<div class="meta">No doctors yet.</div>';
+  } catch (e) {
+    root.innerHTML = `<div class="meta">${e.message}</div>`;
+  }
+}
+
+async function approveDoctor(id) {
+  try {
+    await adminApi(`/api/telemedicine/admin/doctors/${id}/approve`, { method: 'POST' });
+    zedToast('Doctor approved', 'success');
+    loadDoctors();
+  } catch (e) { zedToast(e.message, 'error'); }
+}
+
+async function rejectDoctor(id) {
+  try {
+    await adminApi(`/api/telemedicine/admin/doctors/${id}/reject`, { method: 'POST' });
+    zedToast('Doctor rejected', 'info');
+    loadDoctors();
+  } catch (e) { zedToast(e.message, 'error'); }
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  const user = await ZedAuth.requireAuth();
+  if (!user) return;
+
+  const key = getKey();
+  if (key) document.getElementById('admin-key').value = key;
+  loadDoctors();
+});
+</script>
+</body>
+</html>
+

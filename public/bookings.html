@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Zed - My Bookings</title>
+<link rel="stylesheet" href="zed.css" />
+<style>
+.page { padding:1.2rem; display:flex; flex-direction:column; gap:1rem; }
+.row { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:.8rem; }
+.cardx { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:1rem; display:flex; flex-direction:column; gap:.4rem; }
+.title { font-family:'Syne',sans-serif; font-size:1rem; }
+.meta { color:var(--muted); font-size:.84rem; }
+.status { font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; width:max-content; border-radius:999px; padding:.2rem .5rem; }
+.st-pending { background:rgba(255,170,68,.13); color:#ffcf73; border:1px solid rgba(255,170,68,.3); }
+.st-active { background:rgba(0,212,160,.13); color:#8ff1da; border:1px solid rgba(0,212,160,.3); }
+.st-completed { background:rgba(79,200,224,.13); color:#a5e7f7; border:1px solid rgba(79,200,224,.3); }
+.actions { margin-top:.5rem; display:flex; gap:.45rem; flex-wrap:wrap; }
+.empty { padding:1.2rem; text-align:center; color:var(--muted); border:1px dashed rgba(255,255,255,.2); border-radius:12px; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="main">
+    <div class="topbar">
+      <div><div class="topbar-title">My Telemedicine Bookings</div><div class="topbar-sub">Pay, manage, and join consultation</div></div>
+      <div class="topbar-right">
+        <a href="doctors.html" class="btn btn-ghost btn-sm">Find Doctors</a>
+        <button class="btn btn-primary btn-sm" onclick="loadBookings()">Refresh</button>
+      </div>
+    </div>
+    <div class="scroll-area">
+      <div class="page">
+        <div class="row" id="bookings-root"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="local-auth.js"></script>
+<script src="zed-core.js"></script>
+<script>
+async function api(path, options = {}, needsAuth = false) {
+  const apiBase = (typeof ZED_API_BASE !== 'undefined' && ZED_API_BASE)
+    ? ZED_API_BASE
+    : ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== '3000'
+      ? 'http://localhost:3000'
+      : '');
+  const url = path.startsWith('/api/') ? `${apiBase}${path}` : path;
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  if (needsAuth) {
+    const { data } = await _supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) throw new Error('No active session');
+    headers.Authorization = `Bearer ${token}`;
+  }
+  const res = await fetch(url, { ...options, headers });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`);
+  return body;
+}
+
+function statusClass(st) {
+  if (st === 'active') return 'st-active';
+  if (st === 'completed') return 'st-completed';
+  return 'st-pending';
+}
+
+function bookingCard(b) {
+  const canRate = b.status === 'completed';
+  return `
+    <div class="cardx">
+      <div class="status ${statusClass(b.status)}">${b.status}</div>
+      <div class="title">Booking #${b.id.slice(0, 8)}</div>
+      <div class="meta">Doctor ID: ${b.doctor_id}</div>
+      <div class="meta">Scheduled: ${new Date(b.scheduled_time).toLocaleString()}</div>
+      <div class="meta">Amount: ₦${Number(b.amount || 0).toLocaleString()}</div>
+      <div class="meta">Platform Fee: ₦${Number(b.platform_fee || 0).toLocaleString()} | Doctor Earnings: ₦${Number(b.doctor_earnings || 0).toLocaleString()}</div>
+      <div class="actions">
+        ${b.status === 'pending' ? `<button class="btn btn-primary btn-sm" onclick="payBooking('${b.id}')">Pay Now</button>` : ''}
+        ${(b.status === 'active' || b.status === 'completed') ? `<a class="btn btn-ghost btn-sm" href="consultation.html?booking_id=${b.id}">Open Consultation</a>` : ''}
+        ${b.status === 'active' ? `<button class="btn btn-ghost btn-sm" onclick="completeBooking('${b.id}')">Mark Completed</button>` : ''}
+        ${canRate ? `<button class="btn btn-ghost btn-sm" onclick="rateDoctor('${b.id}')">Rate Doctor</button>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+async function loadBookings() {
+  const root = document.getElementById('bookings-root');
+  root.innerHTML = '<div class="empty">Loading bookings...</div>';
+  try {
+    const data = await api('/api/telemedicine/bookings/my', {}, true);
+    const rows = data.bookings || [];
+    root.innerHTML = rows.length ? rows.map(bookingCard).join('') : '<div class="empty">No bookings yet.</div>';
+  } catch (e) {
+    root.innerHTML = `<div class="empty">${e.message}</div>`;
+  }
+}
+
+async function payBooking(bookingId) {
+  const ref = prompt('Payment reference (leave empty for mock mode):') || null;
+  try {
+    await api(`/api/telemedicine/bookings/${bookingId}/pay`, {
+      method: 'POST',
+      body: JSON.stringify({ payment_reference: ref })
+    }, true);
+    zedToast('Payment successful. Booking is now active.', 'success');
+    loadBookings();
+  } catch (e) {
+    zedToast(e.message, 'error');
+  }
+}
+
+async function completeBooking(bookingId) {
+  try {
+    await api(`/api/telemedicine/bookings/${bookingId}/complete`, { method: 'POST' }, true);
+    zedToast('Booking marked completed.', 'success');
+    loadBookings();
+  } catch (e) {
+    zedToast(e.message, 'error');
+  }
+}
+
+async function rateDoctor(bookingId) {
+  const rating = Number(prompt('Rate doctor from 1 to 5'));
+  if (!rating) return;
+  const comment = prompt('Optional review comment') || null;
+  try {
+    await api(`/api/telemedicine/bookings/${bookingId}/rate`, {
+      method: 'POST',
+      body: JSON.stringify({ rating, comment })
+    }, true);
+    zedToast('Thanks for rating. Rankings updated.', 'success');
+  } catch (e) {
+    zedToast(e.message, 'error');
+  }
+}
+
+async function init() {
+  const user = await ZedAuth.requireAuth();
+  if (!user) return;
+  loadBookings();
+}
+
+init();
+</script>
+</body>
+</html>

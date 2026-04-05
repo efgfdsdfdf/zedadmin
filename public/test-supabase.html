@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Supabase Test</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 20px; background: #f0f0f0; }
+  .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+  .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+  .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+  .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+  .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+  button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+  button:hover { background: #0056b3; }
+  input { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>Supabase Authentication Test</h2>
+  
+  <div id="status" class="info">Testing Supabase connection...</div>
+  
+  <div style="margin-top: 20px;">
+    <h3>Test Actions:</h3>
+    <button onclick="testConnection()">Test Connection</button>
+    <button onclick="testAuth()">Test Auth</button>
+    <button onclick="testProfile()">Test Profile</button>
+  </div>
+  
+  <div style="margin-top: 20px;">
+    <h3>Manual Test:</h3>
+    <input type="email" id="testEmail" placeholder="Enter test email">
+    <input type="password" id="testPassword" placeholder="Enter test password">
+    <button onclick="testSignup()">Sign Up</button>
+    <button onclick="testLogin()">Login</button>
+    <button onclick="testLogout()">Logout</button>
+  </div>
+  
+  <div id="results" style="margin-top: 20px; font-family: monospace; background: #f8f9fa; padding: 10px; border-radius: 4px;"></div>
+</div>
+
+<!-- Supabase CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// Supabase configuration
+const SUPABASE_URL = 'https://cenplbwpjycxotctvjmz.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNlbnBsYndwanljeG90Y3R2am16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MDE0NDgsImV4cCI6MjA4ODQ3NzQ0OH0.6lDMcolkeHre8VE7R823pMcx3uA6Rvw2C9XTiWtUvD8';
+
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+function setStatus(message, type = 'info') {
+  const status = document.getElementById('status');
+  status.textContent = message;
+  status.className = type;
+}
+
+function logResult(message) {
+  const results = document.getElementById('results');
+  results.innerHTML += new Date().toLocaleTimeString() + ': ' + message + '<br>';
+}
+
+async function testConnection() {
+  setStatus('Testing Supabase connection...', 'info');
+  logResult('Testing Supabase connection...');
+  
+  try {
+    // Test basic connection
+    const { data, error } = await supabase.from('profiles').select('*').limit(1);
+    
+    if (error) {
+      setStatus('❌ Connection failed: ' + error.message, 'error');
+      logResult('❌ Connection failed: ' + error.message);
+    } else {
+      setStatus('✅ Connection successful!', 'success');
+      logResult('✅ Connection successful!');
+    }
+  } catch (err) {
+    setStatus('❌ Connection error: ' + err.message, 'error');
+    logResult('❌ Connection error: ' + err.message);
+  }
+}
+
+async function testAuth() {
+  setStatus('Testing authentication...', 'info');
+  logResult('Testing authentication...');
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (user) {
+      setStatus('✅ User is authenticated: ' + user.email, 'success');
+      logResult('✅ User is authenticated: ' + user.email);
+    } else {
+      setStatus('ℹ️ No user currently authenticated', 'info');
+      logResult('ℹ️ No user currently authenticated');
+    }
+  } catch (err) {
+    setStatus('❌ Auth error: ' + err.message, 'error');
+    logResult('❌ Auth error: ' + err.message);
+  }
+}
+
+async function testProfile() {
+  setStatus('Testing profile access...', 'info');
+  logResult('Testing profile access...');
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      setStatus('ℹ️ No user authenticated, cannot test profile', 'info');
+      logResult('ℹ️ No user authenticated, cannot test profile');
+      return;
+    }
+    
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    
+    if (error) {
+      setStatus('❌ Profile access failed: ' + error.message, 'error');
+      logResult('❌ Profile access failed: ' + error.message);
+    } else {
+      setStatus('✅ Profile access successful!', 'success');
+      logResult('✅ Profile access successful! Profile data: ' + JSON.stringify(data, null, 2));
+    }
+  } catch (err) {
+    setStatus('❌ Profile error: ' + err.message, 'error');
+    logResult('❌ Profile error: ' + err.message);
+  }
+}
+
+async function testSignup() {
+  const email = document.getElementById('testEmail').value;
+  const password = document.getElementById('testPassword').value;
+  
+  if (!email || !password) {
+    setStatus('❌ Please enter email and password', 'error');
+    return;
+  }
+  
+  setStatus('Creating test account...', 'info');
+  logResult('Creating test account...');
+  
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email: email,
+      password: password,
+      options: {
+        data: {
+          first_name: 'Test',
+          last_name: 'User'
+        }
+      }
+    });
+    
+    if (error) {
+      setStatus('❌ Sign up failed: ' + error.message, 'error');
+      logResult('❌ Sign up failed: ' + error.message);
+    } else {
+      setStatus('✅ Sign up successful! Check email for confirmation.', 'success');
+      logResult('✅ Sign up successful! User data: ' + JSON.stringify(data, null, 2));
+    }
+  } catch (err) {
+    setStatus('❌ Sign up error: ' + err.message, 'error');
+    logResult('❌ Sign up error: ' + err.message);
+  }
+}
+
+async function testLogin() {
+  const email = document.getElementById('testEmail').value;
+  const password = document.getElementById('testPassword').value;
+  
+  if (!email || !password) {
+    setStatus('❌ Please enter email and password', 'error');
+    return;
+  }
+  
+  setStatus('Logging in...', 'info');
+  logResult('Logging in...');
+  
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password
+    });
+    
+    if (error) {
+      setStatus('❌ Login failed: ' + error.message, 'error');
+      logResult('❌ Login failed: ' + error.message);
+    } else {
+      setStatus('✅ Login successful!', 'success');
+      logResult('✅ Login successful! User data: ' + JSON.stringify(data, null, 2));
+    }
+  } catch (err) {
+    setStatus('❌ Login error: ' + err.message, 'error');
+    logResult('❌ Login error: ' + err.message);
+  }
+}
+
+async function testLogout() {
+  setStatus('Logging out...', 'info');
+  logResult('Logging out...');
+  
+  try {
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) {
+      setStatus('❌ Logout failed: ' + error.message, 'error');
+      logResult('❌ Logout failed: ' + error.message);
+    } else {
+      setStatus('✅ Logout successful!', 'success');
+      logResult('✅ Logout successful!');
+    }
+  } catch (err) {
+    setStatus('❌ Logout error: ' + err.message, 'error');
+    logResult('❌ Logout error: ' + err.message);
+  }
+}
+
+// Initialize
+window.addEventListener('load', () => {
+  logResult('Supabase test page loaded');
+  testConnection();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover" />
+<title>Zed - Admin Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="zed.css" />
+<style>
+:root {
+  --admin-accent: #0ab39c;
+  --admin-accent-2: #4fc8e0;
+}
+* {
+  box-sizing: border-box;
+}
+.admin-wrap {
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.admin-hero {
+  background: linear-gradient(120deg, rgba(10,179,156,.22), rgba(79,200,224,.12));
+  border: 1px solid rgba(10,179,156,.35);
+  border-radius: 18px;
+  padding: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem;
+  flex-wrap: wrap;
+}
+.admin-hero h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.35rem;
+  letter-spacing: -.02em;
+}
+.admin-hero p { color: rgba(255,255,255,.68); margin-top: .3rem; font-size: .9rem; }
+.hero-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  gap: .7rem;
+}
+.metric {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: .8rem;
+}
+.metric .k { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.45); }
+.metric .v { font-family: 'Syne', sans-serif; font-size: 1.25rem; margin-top: .2rem; word-break: break-word; }
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1.1fr .9fr;
+  gap: .8rem;
+}
+.panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  min-width: 0; /* helps flex/grid overflow */
+}
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: .8rem 1rem;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+.panel-title { font-family: 'Syne', sans-serif; font-size: .95rem; }
+.panel-body { padding: .8rem 1rem; }
+/* table wrapper for horizontal scroll on small screens */
+.users-table-wrapper {
+  overflow-x: auto;
+  margin: 0 -0.2rem;
+  padding: 0 0.2rem;
+}
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .8rem;
+  min-width: 500px; /* ensures readability, scrolls on small screens */
+}
+.users-table th,
+.users-table td {
+  text-align: left;
+  padding: .55rem .4rem;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  white-space: nowrap;
+}
+.users-table th { color: rgba(255,255,255,.45); font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; }
+.users-table tr { cursor: pointer; transition: background .15s; }
+.users-table tr:hover { background: rgba(10,179,156,.08); }
+.chip {
+  display: inline-flex;
+  border: 1px solid rgba(10,179,156,.45);
+  background: rgba(10,179,156,.15);
+  color: #9cf0e1;
+  border-radius: 999px;
+  font-size: .68rem;
+  padding: .2rem .45rem;
+  white-space: nowrap;
+}
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  max-height: 500px;
+  overflow-y: auto;
+}
+.user-activity-section {
+  border: 1px solid rgba(10,179,156,.25);
+  border-radius: 12px;
+  padding: .8rem;
+  margin-bottom: 1rem;
+  background: rgba(10,179,156,.05);
+}
+.user-activity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: .6rem;
+  padding-bottom: .4rem;
+  border-bottom: 1px solid rgba(10,179,156,.2);
+  flex-wrap: wrap;
+  gap: .3rem;
+}
+.user-activity-name {
+  font-family: 'Syne', sans-serif;
+  font-size: .9rem;
+  font-weight: 600;
+  color: #9cf0e1;
+  word-break: break-word;
+}
+.user-activity-count {
+  font-size: .7rem;
+  color: rgba(156,240,225,.7);
+  background: rgba(10,179,156,.15);
+  padding: .2rem .5rem;
+  border-radius: 10px;
+}
+.user-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.act {
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  padding: .5rem;
+  background: rgba(255,255,255,.03);
+}
+.act .t { font-size: .8rem; font-weight: 600; word-break: break-word; }
+.act .m { font-size: .7rem; color: rgba(255,255,255,.58); margin-top: .15rem; word-break: break-word; }
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .45rem;
+}
+.detail-box {
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  padding: .55rem;
+  background: rgba(255,255,255,.03);
+}
+.detail-box .k { font-size: .65rem; color: rgba(255,255,255,.45); text-transform: uppercase; }
+.detail-box .v { margin-top: .15rem; font-size: .87rem; word-break: break-word; }
+.toolbar { display: flex; gap: .45rem; flex-wrap: wrap; }
+input.admin-input {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.18);
+  color: #fff;
+  border-radius: 10px;
+  padding: .45rem .55rem;
+  font-size: .8rem;
+  min-width: 210px;
+  width: auto;
+  flex: 1 1 auto;
+}
+/* responsive refinements */
+@media (max-width: 1080px) {
+  .metric-grid { grid-template-columns: repeat(4, 1fr); }
+  .grid-2 { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .metric-grid { grid-template-columns: repeat(3, 1fr); }
+  .admin-wrap { padding: 0.8rem; gap: 0.8rem; }
+  .admin-hero { flex-direction: column; align-items: stretch; text-align: center; }
+  .hero-actions { justify-content: center; }
+  .panel-head { flex-direction: column; align-items: flex-start; }
+}
+@media (max-width: 580px) {
+  .metric-grid { grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
+  .metric .v { font-size: 1rem; }
+  .metric .k { font-size: 0.65rem; }
+  .detail-grid { grid-template-columns: 1fr; }
+  .toolbar button, .hero-actions button { width: 100%; justify-content: center; }
+  .hero-actions { width: 100%; }
+  input.admin-input { min-width: auto; width: 100%; }
+  .admin-hero h1 { font-size: 1.2rem; }
+  .topbar-title { font-size: 1rem; }
+}
+@media (max-width: 420px) {
+  .metric-grid { grid-template-columns: 1fr; gap: 0.5rem; }
+  .users-table th, .users-table td { padding: 0.4rem 0.3rem; font-size: 0.7rem; white-space: normal; }
+  .users-table { min-width: 100%; }
+  .chip { font-size: 0.6rem; }
+}
+</style>
+</head>
+<body>
+<div id="loader"><div class="loader-logo">Zed</div><div class="loader-bar-wrap"><div class="loader-bar"></div></div></div>
+<div class="shell">
+  <div class="main" style="width:100%">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Admin Dashboard</div>
+        <div class="topbar-sub" id="generated-at">Waiting for data</div>
+      </div>
+      <div class="topbar-right">
+        <a href="dashboard.html" class="btn btn-ghost btn-sm">User Dashboard</a>
+      </div>
+    </div>
+    <div class="scroll-area">
+      <div class="admin-wrap">
+        <div class="admin-hero">
+          <div>
+            <h1>Platform Monitoring</h1>
+            <p id="mode-text">Shows cross-user data when server admin mode is configured.</p>
+            <p id="admin-error" style="display:none;color:#ff9aa9;font-size:.78rem;margin-top:.35rem"></p>
+          </div>
+          <div class="hero-actions">
+            <input type="password" id="admin-key" class="admin-input" placeholder="Admin key for server endpoint" />
+            <button class="btn btn-primary btn-sm" id="save-key">Save Key</button>
+            <button class="btn btn-ghost btn-sm" id="refresh">Refresh</button>
+          </div>
+        </div>
+
+        <div class="metric-grid" id="metric-grid"></div>
+
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title">Users</div>
+              <span class="chip" id="user-count-chip">0 users</span>
+            </div>
+            <div class="panel-body">
+              <div class="users-table-wrapper">
+                <table class="users-table">
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>Last Seen</th>
+                      <th>Events</th>
+                      <th>Chats</th>
+                      <th>Vitals</th>
+                    </tr>
+                  </thead>
+                  <tbody id="users-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title">User Activities</div>
+              <span class="chip" id="event-count-chip">0 events</span>
+            </div>
+            <div class="panel-body">
+              <div class="activity-list" id="activity-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Selected User Details</div>
+            <span class="chip" id="detail-user-chip">No user selected</span>
+          </div>
+          <div class="panel-body">
+            <div class="toolbar" style="margin-bottom:.7rem">
+              <button class="btn btn-ghost btn-sm" id="ban-user-btn">Ban User</button>
+              <button class="btn btn-ghost btn-sm" id="unban-user-btn">Unban User</button>
+              <button class="btn btn-ghost btn-sm" id="delete-user-btn" style="border-color:rgba(255,92,122,.45);color:#ff8ea3">Delete User</button>
+            </div>
+            <div class="detail-grid" id="detail-grid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="local-auth.js"></script>
+<script src="zed-core.js"></script>
+<script>
+zedHideLoader();
+
+const state = {
+  data: null,
+  selectedUserId: null
+};
+
+function fmtDate(iso) {
+  if (!iso) return 'n/a';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 'n/a';
+  return d.toLocaleString();
+}
+
+function fmtRel(iso) {
+  if (!iso) return 'n/a';
+  return zedRelTime(iso);
+}
+
+function metricCard(key, value) {
+  return `<div class="metric"><div class="k">${escapeHtml(key)}</div><div class="v">${value ?? 0}</div></div>`;
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/[&<>]/g, function(m) {
+    if (m === '&') return '&amp;';
+    if (m === '<') return '&lt;';
+    if (m === '>') return '&gt;';
+    return m;
+  });
+}
+
+function renderMetrics(metrics = {}) {
+  const html = [
+    metricCard('Users', metrics.users || 0),
+    metricCard('Events', metrics.events || 0),
+    metricCard('Chat Sessions', metrics.chat_sessions || 0),
+    metricCard('Messages', metrics.chat_messages || 0),
+    metricCard('Vitals Logs', metrics.vitals || 0),
+    metricCard('Symptom Checks', metrics.symptoms || 0),
+    metricCard('Reports', metrics.reports || 0),
+    metricCard('Tips Generated', metrics.tips || 0),
+    metricCard('Medicine Scans', metrics.medicine_scans || 0),
+    metricCard('Appointments', metrics.appointments || 0),
+    metricCard('Notifications', metrics.notifications || 0),
+    metricCard('Profiles', metrics.profiles || 0)
+  ].join('');
+  document.getElementById('metric-grid').innerHTML = html;
+}
+
+function renderUsers(users = []) {
+  document.getElementById('user-count-chip').textContent = `${users.length} users`;
+  const body = document.getElementById('users-body');
+  if (!users.length) {
+    body.innerHTML = '<tr><td colspan="5" style="color:rgba(255,255,255,.55)">No user rows found.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = users.map((u) => {
+    const name = [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email || u.id || 'Unknown';
+    const lastSeen = u.last_seen || u.last_event_at || u.updated_at || null;
+    const stats = u.stats || {};
+    return `
+      <tr data-user-id="${escapeHtml(u.id)}">
+        <td><strong>${escapeHtml(name)}</strong><div style="color:rgba(255,255,255,.45);font-size:.7rem">${escapeHtml(u.email || u.id)}</div></td>
+        <td>${fmtRel(lastSeen)}</td>
+        <td>${stats.events || 0}</td>
+        <td>${stats.chat_sessions || 0}</td>
+        <td>${stats.vitals || 0}</td>
+      </tr>
+    `;
+  }).join('');
+
+  body.querySelectorAll('tr[data-user-id]').forEach((row) => {
+    row.addEventListener('click', () => {
+      const uid = row.getAttribute('data-user-id');
+      state.selectedUserId = uid;
+      renderSelectedUser();
+    });
+  });
+}
+
+function renderActivity(events = []) {
+  document.getElementById('event-count-chip').textContent = `${events.length} events`;
+  const el = document.getElementById('activity-list');
+  if (!events.length) {
+    el.innerHTML = '<div style="color:rgba(255,255,255,.55)">No activity events yet.</div>';
+    return;
+  }
+
+  const users = state.data?.users || [];
+  const usersById = {};
+  users.forEach((u) => { if (u?.id) usersById[u.id] = u; });
+
+  // Group events by user
+  const eventsByUser = {};
+  events.forEach((evt) => {
+    const userId = evt.user_id || 'unknown';
+    if (!eventsByUser[userId]) {
+      eventsByUser[userId] = [];
+    }
+    eventsByUser[userId].push(evt);
+  });
+
+  // Sort users by most recent activity
+  const sortedUserIds = Object.keys(eventsByUser).sort((a, b) => {
+    const aLatest = Math.max(...eventsByUser[a].map(e => new Date(e.created_at || 0).getTime()));
+    const bLatest = Math.max(...eventsByUser[b].map(e => new Date(e.created_at || 0).getTime()));
+    return bLatest - aLatest;
+  });
+
+  el.innerHTML = sortedUserIds.map((userId) => {
+    const userEvents = eventsByUser[userId].slice(0, 10);
+    const u = usersById[userId] || {};
+    const name = userEvents[0]?.user_name
+      || [u.first_name, u.last_name].filter(Boolean).join(' ')
+      || userEvents[0]?.user_email
+      || u.email
+      || userId;
+    return `
+      <div class="user-activity-section">
+        <div class="user-activity-header">
+          <div class="user-activity-name">${escapeHtml(name)}</div>
+          <div class="user-activity-count">${userEvents.length} activities</div>
+        </div>
+        <div class="user-activity-list">
+          ${userEvents.map((evt) => `
+            <div class="act">
+              <div class="t">${escapeHtml(evt.event_label || evt.event_type || 'Activity')}</div>
+              <div class="m">
+                page: ${escapeHtml(evt.page || 'n/a')} | ${fmtDate(evt.created_at)}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderSelectedUser() {
+  const grid = document.getElementById('detail-grid');
+  const chip = document.getElementById('detail-user-chip');
+  const users = state.data?.users || [];
+  const user = users.find((u) => u.id === state.selectedUserId);
+
+  if (!user) {
+    chip.textContent = 'No user selected';
+    grid.innerHTML = '<div style="color:rgba(255,255,255,.55)">Click a user row to inspect details.</div>';
+    return;
+  }
+
+  const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.email || user.id;
+  chip.textContent = name;
+  const stats = user.stats || {};
+
+  grid.innerHTML = [
+    ['User ID', user.id],
+    ['Email', user.email || 'n/a'],
+    ['Gender', user.gender || 'n/a'],
+    ['Age', user.age || 'n/a'],
+    ['Blood Group', user.blood_group || 'n/a'],
+    ['Last Seen', fmtDate(user.last_seen || user.last_event_at || user.updated_at)],
+    ['Total Events', stats.events || 0],
+    ['Chat Sessions', stats.chat_sessions || 0],
+    ['Chat Messages', stats.chat_messages || 0],
+    ['Vitals Logs', stats.vitals || 0],
+    ['Symptom Checks', stats.symptoms || 0],
+    ['Medical Reports', stats.reports || 0],
+    ['Tips Entries', stats.tips || 0],
+    ['Medicine Scans', stats.medicine_scans || 0],
+    ['Appointments', stats.appointments || 0],
+    ['Notifications', stats.notifications || 0]
+  ].map(([k, v]) => `<div class="detail-box"><div class="k">${escapeHtml(k)}</div><div class="v">${escapeHtml(v)}</div></div>`).join('');
+}
+
+async function fetchOverview() {
+  const key = sessionStorage.getItem('zed-admin-key') || '';
+  const headers = {};
+  if (key) headers['x-admin-key'] = key;
+
+  const candidates = getAdminApiCandidates('/api/admin/overview');
+
+  let lastError = null;
+  for (const url of [...new Set(candidates)]) {
+    try {
+      const res = await fetch(url, { headers });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const message = body.error ? `${body.error} @ ${url}` : `Admin endpoint failed (${res.status}) @ ${url}`;
+        lastError = new Error(message);
+        continue;
+      }
+      return await res.json();
+    } catch (e) {
+      lastError = e;
+    }
+  }
+
+  throw lastError || new Error('Failed to reach admin endpoint');
+}
+
+async function callAdminAction(path, options = {}) {
+  const key = sessionStorage.getItem('zed-admin-key') || '';
+  if (!key) throw new Error('Set admin key first');
+  const headers = {
+    'Content-Type': 'application/json',
+    'x-admin-key': key,
+    ...(options.headers || {})
+  };
+
+  const candidates = getAdminApiCandidates(path);
+
+  let lastError = null;
+  for (const url of [...new Set(candidates)]) {
+    try {
+      const res = await fetch(url, { ...options, headers });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const message = body.error ? `${body.error} @ ${url}` : `Request failed (${res.status}) @ ${url}`;
+        lastError = new Error(message);
+        continue;
+      }
+      return body;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError || new Error('Failed admin action');
+}
+
+async function localFallbackData() {
+  const user = await ZedAuth.getUser().catch(() => null);
+  const profile = user?.id ? (await ZedProfile.get(user.id)).data : null;
+  const localEvents = ZedActivity.getLocalEvents(500);
+  const stats = {
+    events: localEvents.length,
+    chat_sessions: localEvents.filter((e) => e.event_type === 'chat_session_create').length,
+    chat_messages: localEvents.filter((e) => e.event_type === 'chat_message').length,
+    vitals: localEvents.filter((e) => e.event_type === 'vitals_save').length,
+    symptoms: localEvents.filter((e) => e.event_type === 'symptom_check').length,
+    reports: localEvents.filter((e) => e.event_type === 'medical_report').length,
+    tips: localEvents.filter((e) => e.event_type === 'tips_generate').length,
+    medicine_scans: localEvents.filter((e) => e.event_type === 'medicine_scan').length,
+    appointments: localEvents.filter((e) => e.event_type === 'appointment_create').length,
+    notifications: 0
+  };
+
+  return {
+    mode: 'local',
+    generatedAt: new Date().toISOString(),
+    metrics: {
+      users: user ? 1 : 0,
+      events: stats.events,
+      chat_sessions: stats.chat_sessions,
+      chat_messages: stats.chat_messages,
+      vitals: stats.vitals,
+      symptoms: stats.symptoms,
+      reports: stats.reports,
+      tips: stats.tips,
+      medicine_scans: stats.medicine_scans,
+      appointments: stats.appointments,
+      notifications: 0,
+      profiles: user ? 1 : 0
+    },
+    users: user ? [{
+      id: user.id,
+      email: user.email || null,
+      first_name: profile?.first_name || user.user_metadata?.first_name || null,
+      last_name: profile?.last_name || user.user_metadata?.last_name || null,
+      gender: profile?.gender || null,
+      age: profile?.age || null,
+      blood_group: profile?.blood_group || null,
+      updated_at: profile?.updated_at || null,
+      last_seen: localEvents[0]?.created_at || null,
+      stats
+    }] : [],
+    recentActivity: localEvents
+  };
+}
+
+async function loadData() {
+  const errEl = document.getElementById('admin-error');
+  errEl.style.display = 'none';
+  errEl.textContent = '';
+  document.getElementById('generated-at').textContent = 'Loading admin data...';
+  let data;
+  try {
+    data = await fetchOverview();
+    document.getElementById('mode-text').textContent = 'Live cross-user mode from secure server endpoint.';
+  } catch (e) {
+    console.warn('Admin overview unavailable, using local fallback:', e.message);
+    try {
+      data = await localFallbackData();
+      document.getElementById('mode-text').textContent =
+        'Server admin endpoint unavailable. Showing local browser activity only.';
+      errEl.style.display = 'block';
+      const adminMsg = String(e?.message || 'Unknown error');
+      if (/failed to fetch/i.test(adminMsg)) {
+        const host = window.location.hostname || '';
+        const isLocalHost = host === 'localhost' || host === '127.0.0.1';
+        const isHosted = !isLocalHost && window.location.protocol !== 'file:';
+        const hasApiBase = (typeof ZED_API_BASE !== 'undefined' && String(ZED_API_BASE).trim().length > 0);
+        if (isHosted && !hasApiBase) {
+          errEl.textContent =
+            'Admin API error: No backend API configured for hosted mode. Set ZED_API_BASE to your deployed backend URL (the server that runs /api/admin/overview).';
+        } else if (isHosted) {
+          errEl.textContent =
+            `Admin API error: Failed to fetch from ${String(ZED_API_BASE)}. Confirm the backend is live and CORS allows ${window.location.origin}.`;
+        } else {
+          errEl.textContent =
+            'Admin API error: Failed to fetch. Start backend with "npm start" on port 3000, then open http://localhost:3000/admin.html';
+        }
+      } else {
+        errEl.textContent = `Admin API error: ${adminMsg}`;
+      }
+    } catch (fallbackError) {
+      console.error('Admin local fallback failed:', fallbackError);
+      data = {
+        mode: 'error',
+        generatedAt: new Date().toISOString(),
+        metrics: {},
+        users: [],
+        recentActivity: []
+      };
+      document.getElementById('mode-text').textContent =
+        'Admin data failed to load. Check configuration and browser console.';
+      errEl.style.display = 'block';
+      errEl.textContent =
+        `Admin API error: ${e.message || 'Unknown error'} | Local fallback error: ${fallbackError.message || 'Unknown error'}`;
+    }
+  }
+
+  state.data = data;
+  if (!state.selectedUserId && data.users?.length) state.selectedUserId = data.users[0].id;
+
+  document.getElementById('generated-at').textContent = `Last updated: ${fmtDate(data.generatedAt)}`;
+  renderMetrics(data.metrics || {});
+  renderUsers(data.users || []);
+  renderActivity(data.recentActivity || []);
+  renderSelectedUser();
+}
+
+function getAdminApiCandidates(path) {
+  const urls = [];
+  const base = (typeof ZED_API_BASE !== 'undefined' && ZED_API_BASE) ? String(ZED_API_BASE).trim() : '';
+  if (base) {
+    urls.push(`${base}${path}`);
+  }
+  if (typeof zedCandidateApiUrls === 'function') {
+    urls.push(...zedCandidateApiUrls(path));
+  }
+  urls.push(`${window.location.origin}${path}`);
+  const host = window.location.hostname || '';
+  const isLocalHost = host === 'localhost' || host === '127.0.0.1';
+  const isFileProtocol = window.location.protocol === 'file:';
+  if (isLocalHost || isFileProtocol) {
+    urls.push(`http://localhost:3000${path}`);
+    urls.push(`http://127.0.0.1:3000${path}`);
+  }
+  return [...new Set(urls)];
+}
+
+document.getElementById('save-key').addEventListener('click', () => {
+  const val = document.getElementById('admin-key').value.trim();
+  if (val) sessionStorage.setItem('zed-admin-key', val);
+  else sessionStorage.removeItem('zed-admin-key');
+  zedToast(val ? 'Admin key saved for this browser session.' : 'Admin key cleared.', 'info');
+});
+
+document.getElementById('refresh').addEventListener('click', () => loadData());
+
+document.getElementById('ban-user-btn').addEventListener('click', async () => {
+  if (!state.selectedUserId) {
+    zedToast('Select a user first.', 'warn');
+    return;
+  }
+  const duration = prompt('Ban duration (examples: 24h, 30d, 876000h):', '876000h');
+  if (!duration) return;
+  try {
+    await callAdminAction(`/api/admin/users/${state.selectedUserId}/ban`, {
+      method: 'POST',
+      body: JSON.stringify({ duration })
+    });
+    zedToast('User banned successfully.', 'success');
+  } catch (error) {
+    zedToast(error.message || 'Failed to ban user', 'error');
+  }
+});
+
+document.getElementById('unban-user-btn').addEventListener('click', async () => {
+  if (!state.selectedUserId) {
+    zedToast('Select a user first.', 'warn');
+    return;
+  }
+  try {
+    await callAdminAction(`/api/admin/users/${state.selectedUserId}/unban`, { method: 'POST' });
+    zedToast('User unbanned.', 'success');
+  } catch (error) {
+    zedToast(error.message || 'Failed to unban user', 'error');
+  }
+});
+
+document.getElementById('delete-user-btn').addEventListener('click', async () => {
+  if (!state.selectedUserId) {
+    zedToast('Select a user first.', 'warn');
+    return;
+  }
+  const ok = confirm('Delete this user account permanently? This cannot be undone.');
+  if (!ok) return;
+  try {
+    await callAdminAction(`/api/admin/users/${state.selectedUserId}`, { method: 'DELETE' });
+    zedToast('User deleted.', 'success');
+    state.selectedUserId = null;
+    await loadData();
+  } catch (error) {
+    zedToast(error.message || 'Failed to delete user', 'error');
+  }
+});
+
+window.addEventListener('DOMContentLoaded', async () => {
+  const user = await ZedAuth.requireAuth();
+  if (!user) return;
+
+  const key = sessionStorage.getItem('zed-admin-key') || '';
+  if (key) document.getElementById('admin-key').value = key;
+  loadData();
+});
+</script>
+</body>
+</html>

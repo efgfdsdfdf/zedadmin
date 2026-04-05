@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Zed — Report Analyzer</title>
+<link rel="stylesheet" href="zed.css"/>
+<style>
+.report-wrap{padding:1.2rem;display:flex;flex-direction:column;gap:1.2rem;}
+.upload-zone{border:2px dashed rgba(0,180,166,.3);border-radius:16px;padding:2.5rem 1.5rem;text-align:center;cursor:pointer;transition:all .2s;background:rgba(0,180,166,.03);}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--teal);background:rgba(0,180,166,.07);}
+.upload-icon{font-size:2.5rem;margin-bottom:.8rem;}
+.upload-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:.4rem;}
+.upload-sub{font-size:.8rem;color:rgba(255,255,255,.4);line-height:1.5;}
+.upload-types{display:flex;gap:.5rem;justify-content:center;margin-top:.9rem;flex-wrap:wrap;}
+.type-pill{padding:.22rem .65rem;border-radius:99px;background:rgba(255,255,255,.06);font-size:.7rem;color:rgba(255,255,255,.45);}
+.file-preview{display:none;background:var(--card);border:1px solid rgba(0,180,166,.2);border-radius:14px;padding:1rem;}
+.file-preview.show{display:flex;align-items:center;gap:.9rem;}
+.file-ico{font-size:2rem;flex-shrink:0;}
+.file-name{font-size:.88rem;font-weight:600;margin-bottom:.2rem;word-break:break-all;}
+.file-size{font-size:.72rem;color:rgba(255,255,255,.38);}
+.remove-btn{margin-left:auto;padding:.35rem .7rem;border-radius:8px;background:rgba(255,92,122,.1);border:1px solid rgba(255,92,122,.2);color:var(--error);font-size:.75rem;cursor:pointer;flex-shrink:0;}
+.analysis-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;}
+.atype{padding:.9rem;border-radius:12px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.03);cursor:pointer;transition:all .18s;}
+.atype:hover{border-color:rgba(0,180,166,.3);}
+.atype.selected{background:rgba(0,180,166,.1);border-color:var(--teal);}
+.atype-icon{font-size:1.3rem;margin-bottom:.45rem;}
+.atype-name{font-size:.82rem;font-weight:600;margin-bottom:.2rem;}
+.atype-desc{font-size:.72rem;color:rgba(255,255,255,.38);}
+.result-block{background:linear-gradient(135deg,rgba(0,180,166,.08),rgba(79,200,224,.04));border:1px solid rgba(0,180,166,.2);border-radius:16px;padding:1.3rem;}
+.result-header{display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;}
+.result-av{width:36px;height:36px;border-radius:10px;background:rgba(0,180,166,.15);border:1px solid rgba(0,180,166,.2);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
+.result-body{font-size:.86rem;line-height:1.75;color:rgba(255,255,255,.78);}
+.result-body strong{color:var(--teal-light);display:block;margin-top:.9rem;margin-bottom:.3rem;font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;}
+.history-item-report{display:flex;align-items:center;gap:.85rem;padding:.75rem 0;border-bottom:1px solid rgba(255,255,255,.05);}
+.history-item-report:last-child{border-bottom:none;}
+.hist-icon{width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0;}
+.hist-name{font-size:.84rem;font-weight:500;}
+.hist-meta{font-size:.7rem;color:rgba(255,255,255,.35);margin-top:.1rem;}
+@media(max-width:480px){.analysis-type-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div id="loader"><div class="loader-logo">Zed</div><div class="loader-bar-wrap"><div class="loader-bar"></div></div></div>
+<div id="nav-overlay"></div>
+<input type="file" id="file-input" accept=".pdf,.jpg,.jpeg,.png,.webp" style="display:none" onchange="handleFile(this.files[0])"/>
+
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><a href="index.html" class="logo">Zed</a><span class="logo-badge">Pro</span></div>
+    <div class="user-block"><div class="user-av">👤</div><div><div class="user-name" id="sb-name">…</div><div class="user-sub">✦ Premium</div></div></div>
+    <div style="flex:1;overflow-y:auto">
+      <div class="nav-section"><div class="nav-label">Main</div>
+        <a href="dashboard.html" class="nav-item"><span class="nav-icon">📊</span>Dashboard</a>
+        <a href="chat.html"      class="nav-item"><span class="nav-icon">🤖</span>AI Chat</a>
+        <a href="symptoms.html"  class="nav-item"><span class="nav-icon">🔬</span>Symptom Checker</a>
+        <a href="report.html"    class="nav-item active"><span class="nav-icon">📋</span>Report Analyzer</a>
+                <a href="medicine-scanner.html"   class="nav-item"><span class="nav-icon">💊</span>Medicine Scanner</a>
+      </div>
+      <div class="nav-section"><div class="nav-label">Health</div>
+        <a href="tips.html"      class="nav-item"><span class="nav-icon">💡</span>Health Tips</a>
+        <a href="hospitals.html" class="nav-item"><span class="nav-icon">🏥</span>Hospitals</a>
+        <a href="profile.html"   class="nav-item"><span class="nav-icon">👤</span>My Profile</a>
+      </div>
+    </div>
+    <div class="sidebar-footer"><button class="emergency-btn" onclick="location.href='emergency.html'">🚨 Emergency</button></div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div><div class="topbar-title">Report Analyzer</div><div class="topbar-sub">AI reads &amp; explains your reports</div></div>
+      <div class="topbar-right"><button class="hamburger" onclick="zedMobileNav()"><span class="hamburger-mid"></span></button></div>
+    </div>
+
+    <div class="scroll-area">
+      <div class="report-wrap anim-1">
+
+        <!-- Upload zone -->
+        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()"
+          ondragover="e=>{e.preventDefault();this.classList.add('drag')}"
+          ondragleave="this.classList.remove('drag')"
+          ondrop="e=>{e.preventDefault();this.classList.remove('drag');handleFile(e.dataTransfer.files[0])}">
+          <div class="upload-icon">📋</div>
+          <div class="upload-title">Upload Medical Report</div>
+          <div class="upload-sub">Drag & drop or click to browse<br/>Blood tests, X-ray reports, prescriptions, lab results</div>
+          <div class="upload-types">
+            <span class="type-pill">PDF</span><span class="type-pill">JPG</span><span class="type-pill">PNG</span><span class="type-pill">WEBP</span>
+          </div>
+        </div>
+
+        <!-- File preview -->
+        <div class="file-preview" id="file-preview">
+          <div class="file-ico" id="file-ico">📄</div>
+          <div><div class="file-name" id="file-name">—</div><div class="file-size" id="file-size">—</div></div>
+          <button class="remove-btn" onclick="removeFile()">✕ Remove</button>
+        </div>
+
+        <!-- Analysis type -->
+        <div class="card">
+          <div class="card-title" style="margin-bottom:1rem">What would you like analyzed?</div>
+          <div class="analysis-type-grid">
+            <div class="atype selected" onclick="selectType(this,'full')">
+              <div class="atype-icon">🔬</div><div class="atype-name">Full Analysis</div><div class="atype-desc">Complete explanation of all values</div>
+            </div>
+            <div class="atype" onclick="selectType(this,'abnormal')">
+              <div class="atype-icon">⚠️</div><div class="atype-name">Abnormal Values</div><div class="atype-desc">Highlight out-of-range results</div>
+            </div>
+            <div class="atype" onclick="selectType(this,'summary')">
+              <div class="atype-icon">📝</div><div class="atype-name">Plain Summary</div><div class="atype-desc">Simple language explanation</div>
+            </div>
+            <div class="atype" onclick="selectType(this,'recommendations')">
+              <div class="atype-icon">💡</div><div class="atype-name">Recommendations</div><div class="atype-desc">Next steps based on results</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="card">
+          <div class="card-title" style="margin-bottom:.8rem">Add context <span style="font-size:.72rem;font-weight:400;color:rgba(255,255,255,.35)">(optional)</span></div>
+          <div class="field"><div class="field-wrap"><textarea id="report-notes" placeholder="e.g. This is my annual CBC test. I've been feeling tired lately…" style="min-height:70px;padding:.72rem .9rem;"></textarea></div></div>
+        </div>
+
+        <button class="btn btn-primary btn-full btn-lg" id="analyze-btn" onclick="analyzeReport()" disabled>🔬 Analyze Report</button>
+
+        <!-- Result -->
+        <div id="result-section" style="display:none">
+          <div class="result-block">
+            <div class="result-header">
+              <div class="result-av">🤖</div>
+              <div>
+                <div style="font-family:'Syne',sans-serif;font-weight:700">AI Report Analysis</div>
+                <div style="font-size:.72rem;color:rgba(255,255,255,.38);margin-top:.1rem">Profile-aware interpretation</div>
+              </div>
+              <button onclick="saveReport()" class="btn btn-ghost" style="margin-left:auto;font-size:.76rem;padding:.4rem .75rem;">💾 Save</button>
+            </div>
+            <div class="result-body" id="result-body">Analyzing…</div>
+          </div>
+          <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.8rem">
+            <button class="btn btn-primary" onclick="location.href='chat.html'" style="flex:1;justify-content:center;font-size:.82rem;min-width:140px">💬 Discuss with AI</button>
+            <button class="btn btn-ghost" onclick="location.href='profile.html'" style="flex:1;justify-content:center;font-size:.82rem;min-width:140px">👤 Update Profile</button>
+          </div>
+        </div>
+
+        <!-- Past reports -->
+        <div class="card" id="past-reports-card" style="display:none">
+          <div class="card-header"><div class="card-title">📁 Past Reports</div></div>
+          <div id="past-reports-list"></div>
+        </div>
+
+      </div>
+      <div class="page-footer">Developed by ACE. Zed does not replace professional medical advice. Always consult a qualified healthcare provider.</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="local-auth.js"></script>
+<script src="zed-core.js"></script>
+<script>
+zedHideLoader();
+let currentUser=null, userProfile=null, selectedFile=null, selectedType='full', fileBase64=null, fileMediaType=null;
+
+async function init(){
+  currentUser=await ZedAuth.requireAuth();if(!currentUser)return;
+  document.getElementById('sb-name').textContent=currentUser.user_metadata?.first_name||currentUser.email;
+  const{data:p}=await ZedProfile.get(currentUser.id);userProfile=p;
+  loadPastReports();
+}
+
+function selectType(el,type){
+  document.querySelectorAll('.atype').forEach(a=>a.classList.remove('selected'));
+  el.classList.add('selected'); selectedType=type;
+}
+
+function handleFile(file){
+  if(!file)return;
+  const maxMB=10;
+  if(file.size>maxMB*1024*1024){zedToast('File too large. Max 10MB','error');return;}
+  selectedFile=file;
+  document.getElementById('file-preview').classList.add('show');
+  document.getElementById('file-name').textContent=file.name;
+  document.getElementById('file-size').textContent=(file.size/1024/1024).toFixed(2)+' MB';
+  document.getElementById('file-ico').textContent=file.type.includes('pdf')?'📄':'🖼️';
+  document.getElementById('analyze-btn').disabled=false;
+
+  // Convert to base64 for vision
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const result=e.target.result;
+    fileBase64=result.split(',')[1];
+    fileMediaType=file.type.includes('pdf')?'application/pdf':file.type;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeFile(){
+  selectedFile=null; fileBase64=null; fileMediaType=null;
+  document.getElementById('file-preview').classList.remove('show');
+  document.getElementById('analyze-btn').disabled=true;
+  document.getElementById('file-input').value='';
+}
+
+async function analyzeReport(){
+  if(!selectedFile&&!fileBase64)return;
+  const btn=document.getElementById('analyze-btn');
+  btn.disabled=true; btn.textContent='Analyzing…';
+  document.getElementById('result-section').style.display='block';
+  document.getElementById('result-body').innerHTML='<div style="display:flex;gap:5px;align-items:center;padding:.4rem 0"><span style="width:7px;height:7px;border-radius:50%;background:var(--teal);animation:dot-blink 1.2s infinite;display:inline-block"></span><span style="width:7px;height:7px;border-radius:50%;background:var(--teal);animation:dot-blink 1.2s .2s infinite;display:inline-block;margin:0 2px"></span><span style="width:7px;height:7px;border-radius:50%;background:var(--teal);animation:dot-blink 1.2s .4s infinite;display:inline-block"></span><span style="margin-left:.6rem;font-size:.82rem;color:rgba(255,255,255,.4)">Analyzing your report…</span></div>';
+  document.getElementById('result-section').scrollIntoView({behavior:'smooth',block:'start'});
+
+  const p=userProfile;
+  const typeInstructions={
+    full:'Provide a complete analysis of all values, explaining what each result means in plain language.',
+    abnormal:'Focus only on abnormal or out-of-range values. Explain what they mean and why they matter.',
+    summary:'Give a brief plain-language summary a patient can understand without medical knowledge.',
+    recommendations:'Based on the results, what should the patient do next? Provide specific actionable recommendations.'
+  };
+  const profileCtx=p?`Patient: Age ${p.age||'?'}, ${p.gender||'?'}, Blood ${p.blood_group||'?'}. Conditions: ${p.conditions||'None'}. Meds: ${p.medications||'None'}. Allergies: ${p.allergies||'None'}.`:'No profile data.';
+  const notes=document.getElementById('report-notes').value;
+
+  const contentBlocks=[
+    {type:'text',text:`You are Zed AI, a medical report analyzer. Analyze the attached medical document.\n\n${profileCtx}\nAnalysis type: ${selectedType}\nInstruction: ${typeInstructions[selectedType]}\n${notes?'Patient note: '+notes:''}\n\nFormat your response with bold section headers like **OVERVIEW**, **KEY FINDINGS**, **WHAT THIS MEANS**, **RECOMMENDATIONS**.\nBe clear, empathetic, and avoid jargon. End with a disclaimer.`}
+  ];
+
+  if(fileBase64&&fileMediaType){
+    if(fileMediaType==='application/pdf'){
+      contentBlocks.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:fileBase64}});
+    }else{
+      contentBlocks.push({type:'image',source:{type:'base64',media_type:fileMediaType,data:fileBase64}});
+    }
+  }else{
+    contentBlocks[0].text+=' (Note: No file was successfully loaded — please provide a text description of the report values.)';
+  }
+
+  try{
+    // Use vision if there's an image block, text-only chat otherwise
+    let text;
+    const imgBlock = contentBlocks.find(b=>b.type==='image');
+    if(imgBlock){
+      text = await ZedAI.analyzeImage(imgBlock.source.data, imgBlock.source.media_type,
+        contentBlocks.find(b=>b.type==='text')?.text || 'Analyze this medical report.');
+    } else {
+      text = await ZedAI.chat([{role:'user',content:contentBlocks.map(b=>b.text||'').join('\n')}],{max_tokens:1000});
+    }
+    text = text || 'Unable to analyze. Please try again.';
+    document.getElementById('result-body').innerHTML=text
+      .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+      .replace(/\n/g,'<br>');
+    window._lastReportResult=text;
+    zedToast('Report analyzed successfully','success');
+  }catch(e){
+    document.getElementById('result-body').innerHTML='<span style="color:var(--error)">'+(e.message||'Analysis failed. Please check your API key.')+'</span>';
+  }
+  btn.disabled=false; btn.textContent='🔬 Analyze Report';
+}
+
+async function saveReport(){
+  if(!currentUser||!window._lastReportResult)return;
+  const { error } = await ZedReports.save(currentUser.id, {
+    file_name: selectedFile?.name || 'Report',
+    analysis_type: selectedType,
+    result: window._lastReportResult
+  });
+  if(error) zedToast('Error saving: '+error.message,'error');
+  else { zedToast('Report saved!','success'); loadPastReports(); }
+}
+
+async function loadPastReports(){
+  if(!currentUser)return;
+  const{data}=await _supabase.from('medical_reports').select('*').eq('user_id',currentUser.id).order('analyzed_at',{ascending:false}).limit(5);
+  if(!data||!data.length)return;
+  document.getElementById('past-reports-card').style.display='block';
+  document.getElementById('past-reports-list').innerHTML=data.map(r=>`
+    <div class="history-item-report">
+      <div class="hist-icon">📄</div>
+      <div style="flex:1"><div class="hist-name">${r.file_name}</div><div class="hist-meta">${r.analysis_type} · ${new Date(r.analyzed_at).toLocaleDateString()}</div></div>
+    </div>`).join('');
+}
+
+init();
+</script>
+</body></html>

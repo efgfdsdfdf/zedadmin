@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Zed - Verify OTP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root { --ink:#0a1628; --teal:#00b4a6; --sky:#4fc8e0; --err:#ff5c7a; --ok:#00d4a0; --muted:rgba(255,255,255,.58); }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { min-height:100vh; font-family:'DM Sans',sans-serif; color:#fff; background:
+    radial-gradient(circle at 15% 12%, rgba(0,180,166,.18), transparent 38%),
+    radial-gradient(circle at 82% 85%, rgba(79,200,224,.16), transparent 42%), var(--ink);
+    display:grid; place-items:center; padding:1rem; }
+  .card { width:min(470px, 100%); border:1px solid rgba(255,255,255,.12); border-radius:18px; background:rgba(255,255,255,.04); backdrop-filter:blur(10px); padding:1.3rem; }
+  h1 { font-family:'Syne',sans-serif; font-size:1.55rem; margin-bottom:.35rem; }
+  p { color:var(--muted); line-height:1.6; font-size:.95rem; margin-bottom:1rem; }
+  .field { margin-bottom:.8rem; }
+  label { display:block; font-size:.8rem; margin-bottom:.35rem; color:rgba(255,255,255,.8); }
+  input { width:100%; padding:.75rem .88rem; border-radius:10px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05); color:#fff; outline:none; }
+  input:focus { border-color:var(--teal); box-shadow:0 0 0 3px rgba(0,180,166,.16); }
+  .error { color:var(--err); font-size:.78rem; min-height:1rem; margin-bottom:.3rem; }
+  .ok { color:var(--ok); font-size:.82rem; min-height:1rem; margin-bottom:.2rem; }
+  .actions { display:flex; gap:.65rem; margin-top:.45rem; }
+  button, a.btn { border:none; text-decoration:none; cursor:pointer; border-radius:11px; padding:.75rem .95rem; font-weight:700; font-family:'Syne',sans-serif; font-size:.9rem; }
+  .primary { flex:1; color:#041a20; background:linear-gradient(135deg,var(--teal),var(--sky)); }
+  .ghost { color:#fff; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.03); }
+</style>
+</head>
+<body>
+  <main class="card">
+    <h1>Verify OTP</h1>
+    <p>Enter the recovery OTP from your email. If your email uses a direct recovery link, it will continue automatically.</p>
+
+    <div class="field">
+      <label for="email">Email</label>
+      <input id="email" type="email" placeholder="you@example.com" />
+    </div>
+    <div class="field">
+      <label for="otp">OTP code</label>
+      <input id="otp" type="text" placeholder="Enter OTP code" autocomplete="one-time-code" />
+    </div>
+
+    <div id="ok" class="ok"></div>
+    <div id="error" class="error"></div>
+
+    <div class="actions">
+      <button class="primary" id="verify-btn" onclick="verifyOtpCode()">Verify OTP</button>
+      <a class="btn ghost" href="reset-password.html">Back</a>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="local-auth.js"></script>
+  <script src="zed-core.js"></script>
+  <script>
+    const emailInput = document.getElementById('email');
+    const otpInput = document.getElementById('otp');
+    const okEl = document.getElementById('ok');
+    const errorEl = document.getElementById('error');
+    const verifyBtn = document.getElementById('verify-btn');
+
+    function validEmail(v) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+    }
+
+    function parseHash() {
+      const raw = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash;
+      return new URLSearchParams(raw);
+    }
+
+    async function verifyOtpCode() {
+      const email = emailInput.value.trim();
+      const otp = otpInput.value.trim();
+      errorEl.textContent = '';
+      okEl.textContent = '';
+
+      if (!validEmail(email)) {
+        errorEl.textContent = 'Enter a valid email address.';
+        return;
+      }
+      if (!otp) {
+        errorEl.textContent = 'Enter the OTP code from your email.';
+        return;
+      }
+
+      verifyBtn.disabled = true;
+      verifyBtn.textContent = 'Verifying...';
+
+      const { error } = await ZedAuth.verifyRecoveryOtp(email, otp);
+
+      verifyBtn.disabled = false;
+      verifyBtn.textContent = 'Verify OTP';
+
+      if (error) {
+        errorEl.textContent = error.message || 'OTP verification failed.';
+        return;
+      }
+
+      okEl.textContent = 'OTP verified. Redirecting...';
+      setTimeout(() => {
+        window.location.href = `update-password.html?email=${encodeURIComponent(email)}`;
+      }, 700);
+    }
+
+    (function init() {
+      const query = new URLSearchParams(window.location.search);
+      const hash = parseHash();
+      const preEmail = query.get('email') || hash.get('email');
+      const preOtp = query.get('token') || query.get('otp') || hash.get('token');
+
+      if (preEmail) emailInput.value = preEmail;
+      if (preOtp) otpInput.value = preOtp;
+
+      // Recovery magic-link: Supabase places tokens in hash. Continue directly.
+      if (hash.get('type') === 'recovery' || hash.get('access_token')) {
+        window.location.replace('update-password.html' + window.location.hash);
+      }
+    })();
+  </script>
+</body>
+</html>

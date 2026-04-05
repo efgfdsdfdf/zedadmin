@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Zed — Subscription Plans</title>
+<link rel="stylesheet" href="zed.css"/>
+<style>
+.subscription-wrap { padding:2rem; max-width:1200px; margin:0 auto; }
+.page-header { text-align:center; margin-bottom:3rem; }
+.page-header h1 { font-family:'Syne',sans-serif; font-size:2.5rem; font-weight:800; margin-bottom:1rem; }
+.page-header p { font-size:1.1rem; color:rgba(255,255,255,.7); max-width:600px; margin:0 auto; }
+
+.plans-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(350px,1fr)); gap:2rem; margin-bottom:3rem; }
+.plan-card {
+  background:var(--card); border:2px solid var(--border); border-radius:20px; padding:2rem;
+  position:relative; transition:all .3s; cursor:pointer;
+}
+.plan-card:hover { transform:translateY(-5px); border-color:var(--teal); }
+.plan-card.popular { border-color:var(--teal); box-shadow:0 0 30px rgba(0,180,166,.2); }
+.plan-card.popular::before {
+  content:'Most Popular'; position:absolute; top:-12px; left:50%; transform:translateX(-50%);
+  background:var(--teal); color:#000; padding:.5rem 1rem; border-radius:20px; font-size:.8rem; font-weight:700;
+}
+
+.plan-header { text-align:center; margin-bottom:2rem; }
+.plan-name { font-family:'Syne',sans-serif; font-size:1.8rem; font-weight:800; margin-bottom:.5rem; }
+.plan-price { font-size:2.5rem; font-weight:700; color:var(--teal); margin-bottom:.5rem; }
+.plan-price span { font-size:1rem; color:rgba(255,255,255,.6); }
+.plan-desc { color:rgba(255,255,255,.7); font-size:.95rem; }
+
+.plan-features { margin-bottom:2rem; }
+.plan-features h4 { font-weight:600; margin-bottom:1rem; color:var(--teal-light); }
+.plan-features ul { list-style:none; padding:0; }
+.plan-features li { padding:.5rem 0; display:flex; align-items:center; gap:.8rem; }
+.plan-features li::before { content:'✓'; color:var(--teal); font-weight:700; }
+
+.plan-button {
+  width:100%; padding:1rem; background:linear-gradient(135deg,var(--teal),var(--sky));
+  border:none; border-radius:12px; color:#000; font-weight:700; font-size:1.1rem;
+  cursor:pointer; transition:all .2s;
+}
+.plan-button:hover { transform:translateY(-2px); box-shadow:0 10px 25px rgba(0,180,166,.4); }
+.plan-button:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+
+.current-plan { background:rgba(0,180,166,.1); border-color:var(--teal); }
+.current-plan .plan-button { background:#666; cursor:default; }
+
+.cancel-section { background:var(--card); border:2px solid var(--error); border-radius:15px; padding:2rem; margin-top:2rem; }
+.cancel-section h3 { color:var(--error); margin-bottom:1rem; }
+.cancel-section p { color:rgba(255,255,255,.7); margin-bottom:1.5rem; }
+.cancel-btn { background:var(--error); color:#fff; border:none; padding:.8rem 1.5rem; border-radius:8px; cursor:pointer; }
+
+@media(max-width:768px) {
+  .plans-grid { grid-template-columns:1fr; }
+  .page-header h1 { font-size:2rem; }
+}
+</style>
+</head>
+<body>
+<div id="loader"><div class="loader-logo">Zed</div><div class="loader-bar-wrap"><div class="loader-bar"></div></div></div>
+<div id="nav-overlay"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><a href="index.html" class="logo">Zed</a><span class="logo-badge">Pro</span></div>
+    <div class="user-block"><div class="user-av">👤</div><div><div class="user-name" id="sb-name">…</div><div class="user-sub">✦ Premium</div></div></div>
+    <div style="flex:1;overflow-y:auto">
+      <div class="nav-section"><div class="nav-label">Main</div>
+        <a href="dashboard.html" class="nav-item"><span class="nav-icon">📊</span>Dashboard</a>
+        <a href="chat.html" class="nav-item"><span class="nav-icon">🤖</span>AI Chat</a>
+        <a href="symptoms.html" class="nav-item"><span class="nav-icon">🔬</span>Symptom Checker</a>
+        <a href="report.html" class="nav-item"><span class="nav-icon">📋</span>Report Analyzer</a>
+        <a href="medicine-scanner.html" class="nav-item"><span class="nav-icon">💊</span>Medicine Scanner</a>
+      </div>
+      <div class="nav-section"><div class="nav-label">Account</div>
+        <a href="subscription.html" class="nav-item active"><span class="nav-icon">💎</span>Subscription</a>
+        <a href="profile.html" class="nav-item"><span class="nav-icon">👤</span>My Profile</a>
+      </div>
+    </div>
+    <div class="sidebar-footer"><button class="emergency-btn" onclick="location.href='emergency.html'">🚨 Emergency</button></div>
+  </aside>
+  <div class="main">
+    <div class="topbar">
+      <div><div class="topbar-title">Subscription Plans</div><div class="topbar-sub">Choose the perfect plan for your health needs</div></div>
+      <div class="topbar-right">
+        <button class="hamburger" onclick="zedMobileNav()"><span class="hamburger-mid"></span></button>
+      </div>
+    </div>
+    <div class="scroll-area">
+      <div class="subscription-wrap">
+        <div class="page-header">
+          <h1>Choose Your Health Plan</h1>
+          <p>Unlock advanced AI health features and personalized care with our subscription plans</p>
+        </div>
+
+        <div class="plans-grid" id="plans-grid">
+          <!-- Plans will be loaded here -->
+        </div>
+
+        <div id="current-subscription" style="display:none;">
+          <div class="cancel-section">
+            <h3>Manage Your Subscription</h3>
+            <p>You have an active subscription. You can cancel it here, and it will remain active until the end of your current billing period.</p>
+            <button class="cancel-btn" onclick="cancelSubscription()">Cancel Subscription</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://js.paystack.co/v1/inline.js"></script>
+<script src="zed-core.js"></script>
+<script>
+let currentSubscription = null;
+
+// Load plans and subscription status
+async function loadSubscriptionPage() {
+  await loadPlans();
+  await loadSubscriptionStatus();
+}
+
+async function loadPlans() {
+  try {
+    const response = await fetch('/api/subscription/plans');
+    const data = await response.json();
+
+    const plansGrid = document.getElementById('plans-grid');
+    plansGrid.innerHTML = '';
+
+    data.plans.forEach(plan => {
+      const planCard = createPlanCard(plan);
+      plansGrid.appendChild(planCard);
+    });
+
+  } catch (error) {
+    console.error('Failed to load plans:', error);
+    showToast('Failed to load subscription plans', 'error');
+  }
+}
+
+function createPlanCard(plan) {
+  const card = document.createElement('div');
+  card.className = `plan-card ${plan.id === 'premium' ? 'popular' : ''} ${currentSubscription?.plan === plan.id ? 'current-plan' : ''}`;
+
+  const features = plan.features.map(feature => `<li>${feature}</li>`).join('');
+
+  card.innerHTML = `
+    <div class="plan-header">
+      <div class="plan-name">${plan.name}</div>
+      <div class="plan-price">₦${(plan.price / 100).toFixed(2)}<span>/${plan.interval}</span></div>
+      <div class="plan-desc">Perfect for ${plan.id === 'basic' ? 'getting started' : plan.id === 'premium' ? 'comprehensive care' : 'family health'}</div>
+    </div>
+    <div class="plan-features">
+      <h4>What's included:</h4>
+      <ul>${features}</ul>
+    </div>
+    <button class="plan-button" onclick="subscribeToPlan('${plan.id}')" ${currentSubscription?.plan === plan.id ? 'disabled' : ''}>
+      ${currentSubscription?.plan === plan.id ? 'Current Plan' : 'Subscribe Now'}
+    </button>
+  `;
+
+  return card;
+}
+
+async function loadSubscriptionStatus() {
+  try {
+    const response = await fetch('/api/subscription/status');
+    const data = await response.json();
+
+    currentSubscription = data.hasActiveSubscription ? data : null;
+
+    if (data.hasActiveSubscription) {
+      document.getElementById('current-subscription').style.display = 'block';
+      // Update all plan cards to show current plan
+      document.querySelectorAll('.plan-card').forEach(card => {
+        card.classList.remove('current-plan');
+        const button = card.querySelector('.plan-button');
+        button.disabled = false;
+        button.textContent = 'Subscribe Now';
+      });
+
+      const currentCard = document.querySelector(`[onclick="subscribeToPlan('${data.plan}')"]`);
+      if (currentCard) {
+        currentCard.closest('.plan-card').classList.add('current-plan');
+        currentCard.disabled = true;
+        currentCard.textContent = 'Current Plan';
+      }
+    }
+
+  } catch (error) {
+    console.error('Failed to load subscription status:', error);
+  }
+}
+
+async function subscribeToPlan(planId) {
+  try {
+    const button = event.target;
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Processing...';
+
+    const response = await fetch('/api/subscription/initialize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ planId })
+    });
+
+    const data = await response.json();
+
+    if (data.authorization_url) {
+      // Redirect to Paystack payment page
+      window.location.href = data.authorization_url;
+    } else {
+      throw new Error(data.error || 'Failed to initialize payment');
+    }
+
+  } catch (error) {
+    console.error('Subscription error:', error);
+    showToast(error.message || 'Failed to start subscription', 'error');
+
+    // Reset button
+    event.target.disabled = false;
+    event.target.textContent = originalText;
+  }
+}
+
+async function cancelSubscription() {
+  if (!confirm('Are you sure you want to cancel your subscription? It will remain active until the end of your current billing period.')) {
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/subscription/cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (response.ok) {
+      showToast('Subscription canceled successfully', 'success');
+      setTimeout(() => location.reload(), 2000);
+    } else {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to cancel subscription');
+    }
+
+  } catch (error) {
+    console.error('Cancel error:', error);
+    showToast(error.message || 'Failed to cancel subscription', 'error');
+  }
+}
+
+function showToast(message, type = 'info') {
+  // Simple toast implementation
+  alert(message);
+}
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', async () => {
+  await ZedAuth.requireAuth();
+  await loadSubscriptionPage();
+});
+</script>
+</body>
+</html>

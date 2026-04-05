@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Zed — My Profile</title>
+<link rel="stylesheet" href="zed.css"/>
+<style>
+.profile-hero{background:linear-gradient(135deg,rgba(0,180,166,.1),rgba(79,200,224,.05));border:1px solid rgba(0,180,166,.18);border-radius:18px;padding:1.6rem;display:flex;align-items:center;gap:1.4rem;flex-wrap:wrap;}
+.profile-av-lg{width:68px;height:68px;border-radius:18px;flex-shrink:0;background:linear-gradient(135deg,var(--teal),var(--sky));display:flex;align-items:center;justify-content:center;font-size:1.9rem;box-shadow:0 8px 24px var(--glow);}
+.profile-hero-name{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;letter-spacing:-.02em;}
+.profile-hero-sub{font-size:.8rem;color:rgba(255,255,255,.5);margin-top:.2rem;}
+.profile-hero-tags{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.6rem;}
+.p-tag{padding:.2rem .55rem;border-radius:99px;background:rgba(255,255,255,.07);font-size:.7rem;color:rgba(255,255,255,.6);}
+.content-pad{padding:0 1.2rem 2rem;display:flex;flex-direction:column;gap:1.1rem;}
+.group-title{font-family:'Syne',sans-serif;font-size:.78rem;font-weight:700;color:rgba(255,255,255,.38);text-transform:uppercase;letter-spacing:.08em;padding-bottom:.5rem;border-bottom:1px solid var(--border);margin-bottom:.2rem;}
+.info-row{display:flex;justify-content:space-between;align-items:flex-start;padding:.55rem 0;border-bottom:1px solid rgba(255,255,255,.04);gap:1rem;}
+.info-row:last-child{border-bottom:none;}
+.info-key{font-size:.78rem;color:rgba(255,255,255,.38);flex-shrink:0;min-width:110px;}
+.info-val{font-size:.84rem;color:rgba(255,255,255,.85);text-align:right;font-weight:500;word-break:break-word;max-width:200px;}
+.info-val.empty{color:rgba(255,255,255,.22);font-style:italic;font-weight:400;}
+@media(max-width:480px){.profile-hero{flex-direction:column;align-items:flex-start;}.info-val{max-width:150px;}}
+</style>
+</head>
+<body>
+<div id="loader"><div class="loader-logo">Zed</div><div class="loader-bar-wrap"><div class="loader-bar"></div></div></div>
+<div id="nav-overlay"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><a href="index.html" class="logo">Zed</a><span class="logo-badge">Pro</span></div>
+    <div class="user-block"><div class="user-av">👤</div><div><div class="user-name" id="sb-name">…</div><div class="user-sub">✦ Premium</div></div></div>
+    <div style="flex:1;overflow-y:auto">
+      <div class="nav-section"><div class="nav-label">Main</div>
+        <a href="dashboard.html" class="nav-item"><span class="nav-icon">📊</span>Dashboard</a>
+        <a href="subscription.html" class="nav-item"><span class="nav-icon">💎</span>Subscription</a>
+        <a href="chat.html"      class="nav-item"><span class="nav-icon">🤖</span>AI Chat</a>
+        <a href="symptoms.html"  class="nav-item"><span class="nav-icon">🔬</span>Symptom Checker</a>
+        <a href="report.html"    class="nav-item"><span class="nav-icon">📋</span>Report Analyzer</a>
+                <a href="medicine-scanner.html"   class="nav-item"><span class="nav-icon">💊</span>Medicine Scanner</a>
+      </div>
+      <div class="nav-section"><div class="nav-label">Health</div>
+              <a href="vitals.html"    class="nav-item"><span class="nav-icon">❤️</span>Vitals Check</a>
+        <a href="tips.html"      class="nav-item"><span class="nav-icon">💡</span>Health Tips</a>
+        <a href="hospitals.html" class="nav-item"><span class="nav-icon">🏥</span>Hospitals</a>
+        <a href="profile.html"   class="nav-item active"><span class="nav-icon">👤</span>My Profile</a>
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <button class="emergency-btn" onclick="location.href='emergency.html'">🚨 Emergency Guide</button>
+      <button onclick="ZedAuth.signOut()" style="width:100%;margin-top:.5rem;padding:.52rem;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:9px;color:rgba(255,255,255,.38);font-size:.76rem;cursor:pointer;">Sign Out</button>
+    </div>
+  </aside>
+  <div class="main">
+    <div class="topbar">
+      <div><div class="topbar-title">My Profile</div><div class="topbar-sub">Your health identity</div></div>
+      <div class="topbar-right">
+        <button class="hamburger" onclick="zedMobileNav()">☰</button>
+        <a href="edit-profile.html" class="btn btn-primary" style="font-size:.8rem;padding:.48rem .9rem;">✏️ Edit</a>
+      </div>
+    </div>
+    <div class="scroll-area">
+      <div style="padding:1.2rem">
+        <div class="profile-hero anim-1">
+          <div class="profile-av-lg">👤</div>
+          <div style="flex:1">
+            <div class="profile-hero-name" id="ph-name">—</div>
+            <div class="profile-hero-sub"  id="ph-sub">Loading…</div>
+            <div class="profile-hero-tags" id="ph-tags"></div>
+          </div>
+          <a href="edit-profile.html" class="btn btn-ghost" style="font-size:.78rem;padding:.45rem .85rem;align-self:flex-start;">Edit →</a>
+        </div>
+      </div>
+      <div class="content-pad anim-2">
+        <div class="card"><div class="group-title">Basic Information</div>
+          <div class="info-row"><span class="info-key">Full Name</span><span class="info-val" id="p-name">—</span></div>
+          <div class="info-row"><span class="info-key">Age</span><span class="info-val" id="p-age">—</span></div>
+          <div class="info-row"><span class="info-key">Gender</span><span class="info-val" id="p-gender">—</span></div>
+          <div class="info-row"><span class="info-key">Blood Group</span><span class="info-val" id="p-blood">—</span></div>
+          <div class="info-row"><span class="info-key">Height</span><span class="info-val" id="p-height">—</span></div>
+          <div class="info-row"><span class="info-key">Weight</span><span class="info-val" id="p-weight">—</span></div>
+        </div>
+        <div class="card"><div class="group-title">Medical History</div>
+          <div class="info-row"><span class="info-key">Allergies</span><span class="info-val" id="p-allergies">—</span></div>
+          <div class="info-row"><span class="info-key">Conditions</span><span class="info-val" id="p-conditions">—</span></div>
+          <div class="info-row"><span class="info-key">Medications</span><span class="info-val" id="p-meds">—</span></div>
+          <div class="info-row"><span class="info-key">Past Surgeries</span><span class="info-val" id="p-surgery">—</span></div>
+          <div class="info-row"><span class="info-key">Family History</span><span class="info-val" id="p-family">—</span></div>
+        </div>
+        <div class="card"><div class="group-title">Lifestyle</div>
+          <div class="info-row"><span class="info-key">Smoking</span><span class="info-val" id="p-smoke">—</span></div>
+          <div class="info-row"><span class="info-key">Alcohol</span><span class="info-val" id="p-alcohol">—</span></div>
+          <div class="info-row"><span class="info-key">Exercise</span><span class="info-val" id="p-exercise">—</span></div>
+        </div>
+        <div class="card"><div class="group-title">Emergency Contact</div>
+          <div class="info-row"><span class="info-key">Name</span><span class="info-val" id="p-ec-name">—</span></div>
+          <div class="info-row"><span class="info-key">Phone</span><span class="info-val" id="p-ec-phone">—</span></div>
+          <div class="info-row"><span class="info-key">Relationship</span><span class="info-val" id="p-ec-rel">—</span></div>
+        </div>
+      </div>
+      <div class="page-footer">Developed by ACE. Zed does not replace professional medical advice. Always consult a qualified healthcare provider.</div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="local-auth.js"></script>
+<script src="zed-core.js"></script>
+<script>
+zedHideLoader();
+function fill(id,val,fb='Not set'){const el=document.getElementById(id);if(!el)return;el.textContent=val||fb;el.classList.toggle('empty',!val);}
+async function init(){
+  const user=await ZedAuth.requireAuth(); if(!user)return;
+  document.getElementById('sb-name').textContent=user.user_metadata?.first_name||user.email;
+  const{data:p,error}=await ZedProfile.get(user.id);
+  if(error||!p){zedToast('Profile incomplete — please fill it in.','warn');setTimeout(()=>location.href='edit-profile.html',1600);return;}
+  const check = ZedProfile.evaluateCompleteness(p);
+  const onboardingMode = new URLSearchParams(window.location.search).get('onboarding') === '1';
+  if (!check.isComplete) {
+    const missing = check.missingFields.slice(0, 6).join(', ');
+    zedToast(`Profile ${check.percent}% complete. Missing: ${missing}${check.missingFields.length > 6 ? '...' : ''}`, 'warn');
+    if (onboardingMode) {
+      setTimeout(() => { location.href = 'edit-profile.html'; }, 1400);
+      return;
+    }
+  } else {
+    localStorage.removeItem(`zed-onboarding-pending:${user.id}`);
+  }
+  const fn=[p.first_name,p.last_name].filter(Boolean).join(' ')||user.email;
+  document.getElementById('ph-name').textContent=fn;
+  document.getElementById('ph-sub').textContent=[p.age&&p.age+' yrs',p.gender,p.blood_group].filter(Boolean).join(' · ');
+  const tags=[p.blood_group&&'🩸 '+p.blood_group,p.age&&p.age+' yrs',p.allergies&&'⚠ Allergies'].filter(Boolean);
+  document.getElementById('ph-tags').innerHTML=tags.map(t=>`<span class="p-tag">${t}</span>`).join('');
+  fill('p-name',fn); fill('p-age',p.age?p.age+' years':''); fill('p-gender',p.gender);
+  fill('p-blood',p.blood_group); fill('p-height',p.height?p.height+' cm':''); fill('p-weight',p.weight?p.weight+' kg':'');
+  fill('p-allergies',p.allergies); fill('p-conditions',p.conditions); fill('p-meds',p.medications);
+  fill('p-surgery',p.past_surgeries); fill('p-family',p.family_history);
+  fill('p-smoke',p.smoking); fill('p-alcohol',p.alcohol); fill('p-exercise',p.exercise);
+  fill('p-ec-name',p.ec_name); fill('p-ec-phone',p.ec_phone); fill('p-ec-rel',p.ec_relationship);
+  document.getElementById('sb-name').textContent=p.first_name||user.email;
+}
+init();
+</script>
+</body></html>

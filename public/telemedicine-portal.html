@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Zed - Telemedicine Portal</title>
+<link rel="stylesheet" href="zed.css" />
+<style>
+.portal-wrap {
+  min-height: calc(100vh - 64px);
+  display: grid;
+  place-items: center;
+  padding: 1.2rem;
+}
+.portal-card {
+  width: min(900px, 100%);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 1.1rem;
+}
+.portal-head {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+.portal-head h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.4rem;
+}
+.portal-head p {
+  color: var(--muted);
+  margin-top: 0.25rem;
+  font-size: 0.9rem;
+}
+.portal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+.option {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.option .icon {
+  font-size: 1.5rem;
+}
+.option h2 {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.05rem;
+}
+.option p {
+  color: var(--muted);
+  font-size: 0.86rem;
+  min-height: 40px;
+}
+.option .btn {
+  margin-top: 0.25rem;
+}
+.portal-foot {
+  margin-top: 0.9rem;
+  display: flex;
+  justify-content: center;
+}
+@media (max-width: 760px) {
+  .portal-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Telemedicine</div>
+        <div class="topbar-sub">Choose your role to continue</div>
+      </div>
+      <div class="topbar-right">
+        <a href="dashboard.html" class="btn btn-ghost btn-sm">Back to Dashboard</a>
+      </div>
+    </div>
+    <div class="scroll-area">
+      <div class="portal-wrap">
+        <div class="portal-card">
+          <div class="portal-head">
+            <h1>Are you a patient or a doctor?</h1>
+            <p>Patients can find and book verified doctors. Doctors can onboard and get verified.</p>
+          </div>
+
+          <div class="portal-grid">
+            <div class="option">
+              <div class="icon">🧑‍⚕️</div>
+              <h2>I am a Patient</h2>
+              <p>Browse verified doctors, book sessions, pay, and start consultation chat.</p>
+              <a href="doctors.html" class="btn btn-primary btn-sm">Continue as Patient</a>
+            </div>
+
+            <div class="option">
+              <div class="icon">🩺</div>
+              <h2>I am a Doctor</h2>
+              <p>Create a doctor account, submit your license, and wait for admin verification.</p>
+              <a href="doctor-signup.html" class="btn btn-primary btn-sm">Continue as Doctor</a>
+            </div>
+          </div>
+
+          <div class="portal-foot">
+            <a href="admin-doctors.html" class="btn btn-ghost btn-sm">Admin Doctor Verification</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="local-auth.js"></script>
+<script src="zed-core.js"></script>
+<script>
+async function api(path, options = {}, needsAuth = true) {
+  const apiBase = (typeof ZED_API_BASE !== 'undefined' && ZED_API_BASE)
+    ? ZED_API_BASE
+    : ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== '3000'
+      ? 'http://localhost:3000'
+      : '');
+  const url = path.startsWith('/api/') ? `${apiBase}${path}` : path;
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  if (needsAuth) {
+    const { data } = await _supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) throw new Error('No active session');
+    headers.Authorization = `Bearer ${token}`;
+  }
+  const res = await fetch(url, { ...options, headers });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`);
+  return body;
+}
+
+async function autoRouteDoctor() {
+  const user = await ZedAuth.getUser();
+  if (!user) return;
+  try {
+    const data = await api('/api/telemedicine/doctors/me');
+    if (data?.doctor) {
+      window.location.href = 'doctor-dashboard.html';
+    }
+  } catch (_) {}
+}
+
+autoRouteDoctor();
+</script>
+</body>
+</html>

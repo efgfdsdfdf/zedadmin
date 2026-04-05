@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Zed - Doctor Signup</title>
+<link rel="stylesheet" href="zed.css" />
+<style>
+.wrap { min-height:100vh; display:grid; place-items:center; padding:1rem; }
+.cardx { width:min(760px,100%); background:var(--card); border:1px solid var(--border); border-radius:16px; padding:1rem; display:grid; gap:.8rem; }
+.title { font-family:'Syne',sans-serif; font-size:1.35rem; }
+.muted { color:var(--muted); font-size:.86rem; }
+.grid { display:grid; grid-template-columns:1fr 1fr; gap:.7rem; }
+.field { display:flex; flex-direction:column; gap:.25rem; }
+.field label { font-size:.76rem; color:var(--muted); }
+.field input,.field textarea { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:#fff; border-radius:10px; padding:.58rem .65rem; }
+.field textarea { min-height:90px; resize:vertical; }
+.actions { display:flex; gap:.55rem; flex-wrap:wrap; }
+@media (max-width:760px){ .grid { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="cardx">
+    <div>
+      <div class="title">Doctor Onboarding</div>
+      <div class="muted">Create your doctor account. You will appear after admin verification.</div>
+    </div>
+
+    <div class="grid">
+      <div class="field"><label>Full Name</label><input id="full_name" /></div>
+      <div class="field"><label>Email</label><input id="email" type="email" /></div>
+      <div class="field"><label>Password</label><input id="password" type="password" /></div>
+      <div class="field"><label>Specialty</label><input id="specialty" /></div>
+      <div class="field"><label>License Number</label><input id="license_number" /></div>
+      <div class="field"><label>Price Per Session (NGN)</label><input id="price_per_session" type="number" min="1" /></div>
+    </div>
+
+    <div class="field"><label>Bio</label><textarea id="bio"></textarea></div>
+    <div class="field"><label>Availability JSON</label><textarea id="availability">{ "mon": ["09:00-12:00"], "wed": ["14:00-18:00"] }</textarea></div>
+    <div class="field"><label>License Document</label><input id="license_file" type="file" accept=".pdf,.jpg,.jpeg,.png" /></div>
+
+    <div class="actions">
+      <button class="btn btn-primary btn-sm" onclick="submitDoctorSignup()">Submit Doctor Application</button>
+      <a class="btn btn-ghost btn-sm" href="login.html">Back to Login</a>
+      <a class="btn btn-ghost btn-sm" href="admin-doctors.html">Admin Verify Doctors</a>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="local-auth.js"></script>
+<script src="zed-core.js"></script>
+<script>
+function toBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const raw = String(reader.result || '');
+      const b64 = raw.includes(',') ? raw.split(',')[1] : raw;
+      resolve(b64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function submitDoctorSignup() {
+  try {
+    const availability = JSON.parse(document.getElementById('availability').value || '{}');
+    const file = document.getElementById('license_file').files?.[0] || null;
+    let license_document_base64 = null;
+    let license_document_filename = null;
+    let license_document_content_type = null;
+
+    if (file) {
+      license_document_base64 = await toBase64(file);
+      license_document_filename = file.name;
+      license_document_content_type = file.type || 'application/octet-stream';
+    }
+
+    const payload = {
+      full_name: document.getElementById('full_name').value.trim(),
+      email: document.getElementById('email').value.trim(),
+      password: document.getElementById('password').value,
+      specialty: document.getElementById('specialty').value.trim(),
+      license_number: document.getElementById('license_number').value.trim(),
+      price_per_session: Number(document.getElementById('price_per_session').value || 0),
+      bio: document.getElementById('bio').value.trim(),
+      availability,
+      license_document_base64,
+      license_document_filename,
+      license_document_content_type
+    };
+
+    const candidates = (typeof zedCandidateApiUrls === 'function')
+      ? zedCandidateApiUrls('/api/telemedicine/doctors/signup')
+      : [];
+    const fallback = [];
+    if (typeof ZED_API_BASE !== 'undefined' && ZED_API_BASE) {
+      fallback.push(`${ZED_API_BASE}/api/telemedicine/doctors/signup`);
+    }
+    fallback.push('/api/telemedicine/doctors/signup', 'http://localhost:3000/api/telemedicine/doctors/signup');
+    const endpoints = [...new Set([...candidates, ...fallback])];
+
+    let done = false;
+    let lastError = new Error('Failed to reach signup endpoint');
+    for (const url of endpoints) {
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          lastError = new Error(`${body.error || `Failed (${res.status})`} @ ${url}`);
+          continue;
+        }
+        done = true;
+        break;
+      } catch (err) {
+        lastError = new Error(`${err.message || 'Network error'} @ ${url}`);
+      }
+    }
+    if (!done) throw lastError;
+
+    zedToast('Doctor account created. Awaiting admin verification.', 'success');
+  } catch (e) {
+    zedToast(e.message, 'error');
+  }
+}
+</script>
+</body>
+</html>
